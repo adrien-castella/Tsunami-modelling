@@ -40,7 +40,16 @@ class Modelling:
             self.h = h
         if not dt == 0:
             self.dt = dt
+    
+    def check_stability(self):
+        print("your life is not stable")
+
+    def min_stability(self):
+        for i in range(0,10):
+            self.check_stability()
+            print("test this for stability")
 
 instance = Modelling()
 instance.set_param(h = 1)
 instance.solveEq()
+instance.min_stability()
