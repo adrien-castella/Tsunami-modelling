@@ -1,7 +1,7 @@
 import numpy as np
 
 class Modelling:
-    def __init__(self, init_grid=np.array([[0]]), c=0, h=0, dt=1):
+    def __init__(self, init_grid=np.array([[0]]), c=2, h=1, dt=1):
         self.c = c
         self.h = h
         self.dt = dt
@@ -31,11 +31,16 @@ class Modelling:
                         axis = 0)
             print(k) # not needed
             k = k + 1
-
-    #def set_param(self, c = self.c, h = self.h, dt = self.dt):
-    #    self.c = c
-    #    self.h = h
-    #    self.dt = dt
+        print("hello123")
+    
+    def set_param(self, c = 0, h = 0, dt = 0):
+        if not c == 0:
+            self.c = c
+        if not h == 0:
+            self.h = h
+        if not dt == 0:
+            self.dt = dt
 
 instance = Modelling()
+instance.set_param(h = 1)
 instance.solveEq()
