@@ -62,26 +62,45 @@ class Grid:
 
                     self.grid[grid_num][i][j] = value_max - (distance*step)
     
-    def set_rect_inc_dec(self, grid_num, i_init, j_init, x_size, y_size,
-                         value_max, value_min = 0, inc = True, axis = True):
-        if i_init + x_size > self.n or j_init + y_size > self.m:
+    def set_rect_inc_dec(self, grid_num, i_init, j_init, x_s, y_s,
+                         v_max, v_min = 0, inc = True, axis = True):
+        if i_init + x_s > self.n or j_init + y_s > self.m:
             print("error in provided parameters. Rectangle does not fit.")
         elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
         else:
-            step = (value_max - value_min)/max(x_size, y_size)
+            step = (v_max - v_min)/max(x_s, y_s)
 
-            for i in range(i_init, i_init + x_size):
-                for j in range(j_init, j_init + y_size):
+            for i in range(i_init, i_init + x_s):
+                for j in range(j_init, j_init + y_s):
                     if axis:
                         distance = i - i_init
                     else:
                         distance = j - i_init
+
+                    print(distance)
                     
                     if inc:
-                        self.grid[grid_num][i][j] = value_min + distance*step
+                        self.grid[grid_num][i][j] = v_min + distance*step
                     else:
-                        self.grid[grid_num][i][j] = value_max - distance*step
+                        self.grid[grid_num][i][j] = v_max - distance*step
+    
+    def set_circ_unif(self, grid_num, c_i, c_j, radius, v_max, v_min):
+        if c_i > self.n or c_i > self.m:
+            print("error in provided parameters. Rectangle does not fit.")
+        elif grid_num > self.max_time:
+            print("error in time step. There is not grid at this time.")
+        else:
+            diff = v_max - v_min
+            
+            for i in range(self.n):
+                for j in range(self.m):
+                    dist = math.sqrt(math.pow(i - c_i, 2) + math.pow(j - c_j, 2))
+
+                    if dist <= radius:
+                        dist = dist/radius
+                        value = int((v_min + diff*dist)*100)
+                        self.grid[grid_num][i][j] = value/100.0
     
     def print_grid(self):
         print(self.grid)
@@ -143,10 +162,12 @@ class Modelling:
 #   n: x dimension of grid
 #   m: y dimension of grid
 #   max_time: time up to which we are considering the model
-init_grid = np.array([np.full((10,10),3)])
-grid = Grid(grid = init_grid, n = 10, m = 10, max_time = 10)
-grid.set_rect_inc_dec(0, 1,1,5,5,3)
+size = 14
+init_grid = np.array([np.full((size,size),3.0)])
+grid = Grid(grid = init_grid, n = size, m = size, max_time = 5)
+grid.set_circ_unif(0,3,7,5,3,0)
 grid.initialize_grid()
+grid.print_grid()
 
 # create instance of modelling class
 instance = Modelling() # need to give the grid here like (grid)
