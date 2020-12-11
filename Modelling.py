@@ -2,13 +2,20 @@ import numpy as np
 import math
 
 class Grid:
+    # the __init__ method is called at the initialization of a class instance
+    # it initializes all global parameters of the class
+    # grid: a numpy list of the first x initial grids
+    # n: the x? dimension of the grid size
+    # m: the y? dimension of the grid size
+    # max_time: the maximum number of time steps that will be taken
+    # aka, the max size of the list
     def __init__(self, grid=None, n=2, m=2, max_time=1):
         # class structure for Grids, might be helpful
-        # could improve computational time
         self.grid = grid
         self.n = n
         self.m = m
         self.max_time = max_time
+        # note this function call will force all grids in the list to be identical (initially)
         self.initialize_grid()
 
     def get_grid(self, i):
@@ -23,6 +30,9 @@ class Grid:
     def set_max(self, max_t):
         self.max_time = max_t
     
+    # initializes the list of grids. Makes a list of size max_time
+    # composed of grids identical to the first grid
+    # by default the grids are filled with zeros
     def initialize_grid(self):
         initial = np.array([np.zeros((self.n,self.m))])
         if self.grid is None:
@@ -34,8 +44,15 @@ class Grid:
         for i in range(1, self.max_time):
             self.grid = np.append(self.grid, initial.copy(), axis = 0)
 
-
-    # set a rectangle in the grid to 
+    # set a rectangular shaped portion of the grid at some time step to some value
+    # grid_num: (integer) the time step which is being modified
+    # i_init: the x?-coord of the rectangles top left corner (integer)
+    # j_init: the y?-coord of the rectangles top left corner (integer)
+    # x_size: the x-size of the rectangle (integer)
+    # y_size: the y-size of the rectangle (integer)
+    # value: the value being input into the rectangle
+    # add: (boolean) whether the rectangle is replacing the current values
+    #      or being added to them
     def set_rect(self, grid_num, i_init, j_init, x_size, y_size, value, add = False):
         if i_init + x_size > self.n or j_init + y_size > self.m:
             print("error in provided parameters. Rectangle does not fit.")
@@ -51,6 +68,18 @@ class Grid:
                     else:
                         self.grid[grid_num][i][j] = value
     
+    # in a rectangular portion of the grid have a linear (in/de)crease in values
+    # from the center outwards uniformly
+    # grid_num: (integer) the time step which is being modified
+    # i_init: the x?-coord of the rectangles top left corner (integer)
+    # j_init: the y?-coord of the rectangles top left corner (integer)
+    # x_size: the x-size of the rectangle (integer)
+    # y_size: the y-size of the rectangle (integer)
+    # value_max: the maximum value being input into the rectangle
+    # value_min: the minimum value being input into the rectangle
+    # add: (boolean) whether the rectangle is replacing the current values
+    #      or being added to them
+    # int: (boolean) whether the values should be increasing or decreasing outwards
     def set_unif_rect(self, grid_num, i_init, j_init, x_size, y_size,
                       value_max, value_min, add = False, inc = True):
         if i_init + x_size > self.n or j_init + y_size > self.m:
@@ -81,6 +110,18 @@ class Grid:
                     else:
                         self.grid[grid_num][i][j] = value
     
+    # in a rectangular portion of the grid have a linear (in/de)crease in values
+    # from the center outwards uniformly
+    # grid_num: (integer) the time step which is being modified
+    # i_init: the x?-coord of the rectangles top left corner (integer)
+    # j_init: the y?-coord of the rectangles top left corner (integer)
+    # x_size: the x-size of the rectangle (integer)
+    # y_size: the y-size of the rectangle (integer)
+    # value_max: the maximum value being input into the rectangle
+    # value_min: the minimum value being input into the rectangle
+    # add: (boolean) whether the rectangle is replacing the current values
+    #      or being added to them
+    # int: (boolean) whether the values should be increasing or decreasing outwards
     def set_rect_inc_dec(self, grid_num, i_init, j_init, x_s, y_s,
                          v_max, v_min = 0, inc = True, axis = True, add = False):
         if i_init + x_s > self.n or j_init + y_s > self.m:
