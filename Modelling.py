@@ -2,12 +2,10 @@ import numpy as np
 import math
 
 class Grid:
-    def __init__(self, grid=0, n=2, m=2, max_time=1):
+    def __init__(self, grid=None, n=2, m=2, max_time=1):
         # class structure for Grids, might be helpful
         # could improve computational time
-        self.grid = None
-        if not grid == 0:
-            self.grid = np.array([grid])
+        self.grid = grid
         self.n = n
         self.m = m
         self.max_time = max_time
@@ -29,25 +27,27 @@ class Grid:
         else:
             initial = np.array([self.grid[0]]).copy()
         
+        self.grid = initial
         for i in range(1, self.max_time):
             self.grid = np.append(self.grid, initial.copy(), axis = 0)
 
 
     # set a rectangle in the grid to 
     def set_rect(self, grid_num, i_init, j_init, x_size, y_size, value):
-        if i_init + x_size > n or j_init + y_size > m:
+        if i_init + x_size > self.n or j_init + y_size > self.m:
             print("error in provided parameters. Rectangle does not fit.")
-        elif grid_num > max_time:
+        elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
         else:
             for i in range(i_init, i_init + x_size):
                 for j in range(j_init, j_init + y_size):
                     self.grid[grid_num][i][j] = value
     
-    def set_unif_rect(self, grid_num, i_init, j_init, x_size, y_size, value_max, value_min):
-        if i_init + x_size > n or j_init + y_size > m:
+    def set_unif_rect(self, grid_num, i_init, j_init, x_size, y_size,
+                      value_max, value_min):
+        if i_init + x_size > self.n or j_init + y_size > self.m:
             print("error in provided parameters. Rectangle does not fit.")
-        elif grid_num > max_time:
+        elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
         else:
             b_right = i_init + x_size
@@ -62,10 +62,11 @@ class Grid:
 
                     self.grid[grid_num][i][j] = value_max - (distance*step)
     
-    def set_rect_inc_dec(self, grid_num, i_init, j_init, x_size, y_size, value_max, value_min = 0, inc = True, axis = True):
-        if i_init + x_size > n or j_init + y_size > m:
+    def set_rect_inc_dec(self, grid_num, i_init, j_init, x_size, y_size,
+                         value_max, value_min = 0, inc = True, axis = True):
+        if i_init + x_size > self.n or j_init + y_size > self.m:
             print("error in provided parameters. Rectangle does not fit.")
-        elif grid_num > max_time:
+        elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
         else:
             step = (value_max - value_min)/max(x_size, y_size)
@@ -81,6 +82,9 @@ class Grid:
                         self.grid[grid_num][i][j] = value_min + distance*step
                     else:
                         self.grid[grid_num][i][j] = value_max - distance*step
+    
+    def print_grid(self):
+        print(self.grid)
 
 
 class Modelling:
@@ -94,16 +98,14 @@ class Modelling:
     
     def next_grid(self, k):
         # compute grid in next time step (nested for loop)
-        print(k)
-        print(self.max)
         grid_prev = self.grid.get_grid(k-1)
         grid_now = self.grid.get_grid(k)
         ngrid = self.grid.get_grid(k+1)
 
-        for i in range(0, self.grid.n):
-            for j in range(0, len(self.grid.m)):
+        for i in range(self.grid.n):
+            for j in range(self.grid.m):
                 # use the "update formula"
-                print("hello")
+                1 + 1
         self.grid.set_grid = ngrid
     
     def solveEq(self):
@@ -127,16 +129,24 @@ class Modelling:
     
     def check_stability(self): # add given parameters
         # check whether problem is stable with given parameters
-        print("your life is not stable")
+        1+1
 
     def min_stability(self):
         # find minimal stable parameters, whatever that may mean
         for i in range(0,10):
             self.check_stability()
-            print("test this for stability")
+            1+1
 
 # create grid
-grid = Grid()
+# parameters
+#   grid: grid at time = 0
+#   n: x dimension of grid
+#   m: y dimension of grid
+#   max_time: time up to which we are considering the model
+init_grid = np.array([np.full((10,10),3)])
+grid = Grid(grid = init_grid, n = 10, m = 10, max_time = 10)
+grid.set_rect_inc_dec(0, 1,1,5,5,3)
+grid.initialize_grid()
 
 # create instance of modelling class
 instance = Modelling() # need to give the grid here like (grid)
