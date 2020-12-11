@@ -20,6 +20,9 @@ class Grid:
     def set_grid(self, i, new_grid):
         self.grid[i-1] = new_grid
     
+    def set_max(self, max_t):
+        self.max_time = max_t
+    
     def initialize_grid(self):
         initial = np.array([np.zeros((self.n,self.m))])
         if self.grid is None:
@@ -33,23 +36,30 @@ class Grid:
 
 
     # set a rectangle in the grid to 
-    def set_rect(self, grid_num, i_init, j_init, x_size, y_size, value):
+    def set_rect(self, grid_num, i_init, j_init, x_size, y_size, value, add = False):
         if i_init + x_size > self.n or j_init + y_size > self.m:
             print("error in provided parameters. Rectangle does not fit.")
         elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
         else:
+            if not add:
+                self.grid[grid_num] = np.zeros((self.n, self.m))
             for i in range(i_init, i_init + x_size):
                 for j in range(j_init, j_init + y_size):
-                    self.grid[grid_num][i][j] = value
+                    if add:
+                        self.grid[grid_num][i][j] += value
+                    else:
+                        self.grid[grid_num][i][j] = value
     
     def set_unif_rect(self, grid_num, i_init, j_init, x_size, y_size,
-                      value_max, value_min):
+                      value_max, value_min, add = False, inc = True):
         if i_init + x_size > self.n or j_init + y_size > self.m:
             print("error in provided parameters. Rectangle does not fit.")
         elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
         else:
+            if not add:
+                self.grid[grid_num] = np.zeros((self.n, self.m))
             b_right = i_init + x_size
             b_up = j_init + y_size
             step = 2*(value_max - value_min)/max(x_size, y_size)
@@ -60,15 +70,26 @@ class Grid:
                     y_dist = max(math.abs(j - j_init), math.abs(j - b_up))
                     distance = min(x_dist, y_dist)
 
-                    self.grid[grid_num][i][j] = value_max - (distance*step)
+                    value = 0
+                    if inc:
+                        value = (value_min + (distance*step))
+                    else:
+                        value = (value_max - (distance*step))
+                    
+                    if add:
+                        self.grid[grid_num][i][j] += value
+                    else:
+                        self.grid[grid_num][i][j] = value
     
     def set_rect_inc_dec(self, grid_num, i_init, j_init, x_s, y_s,
-                         v_max, v_min = 0, inc = True, axis = True):
+                         v_max, v_min = 0, inc = True, axis = True, add = False):
         if i_init + x_s > self.n or j_init + y_s > self.m:
             print("error in provided parameters. Rectangle does not fit.")
         elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
         else:
+            if not add:
+                self.grid[grid_num] = np.zeros((self.n, self.m))
             step = (v_max - v_min)/max(x_s, y_s)
 
             for i in range(i_init, i_init + x_s):
@@ -80,13 +101,20 @@ class Grid:
 
                     print(distance)
                     
+                    value = 0
                     if inc:
-                        self.grid[grid_num][i][j] = v_min + distance*step
+                        value = (v_min + distance*step)
                     else:
-                        self.grid[grid_num][i][j] = v_max - distance*step
+                        value = (v_max - distance*step)
+
+                    if add:
+                        self.grid[grid_num][i][j] += value
+                    else:
+                        self.grid[grid_num][i][j] = value
     
-    def set_circ_unif(self, grid_num, c_i, c_j, radius, v_max, v_min):
-        if c_i > self.n or c_i > self.m:
+    def set_circ_unif(self, grid_num, c_i, c_j, radius, v_max, v_min,
+                      add = False, inc = True):
+        if c_i > self.n or c_j > self.m:
             print("error in provided parameters. Rectangle does not fit.")
         elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
@@ -99,9 +127,38 @@ class Grid:
 
                     if dist <= radius:
                         dist = dist/radius
-                        value = int((v_min + diff*dist)*100)
-                        self.grid[grid_num][i][j] = value/100.0
+                        value = 0
+                        if (inc):
+                            value = int((v_min + diff*dist)*100)
+                        else:
+                            value = int((v_max - diff*dist)*100)
+                        
+                        if add:
+                            self.grid[grid_num][i][j] += value/100.0
+                        else:
+                            self.grid[grid_num][i][j] = value/100.0
     
+    def set_wave(self, grid_num, c_i, c_j, r_c, r_d, v_max, v_min,
+                 add = False):
+        if c_i > self.n or c_j > self.m:
+            print("error in provided parameters. Rectangle does not fit.")
+        elif grid_num > self.max_time:
+            print("error in time step. There is not grid at this time.")
+        else:
+            diff = v_max - v_min
+            
+            for i in range(self.n):
+                for j in range(self.m):
+                    dist = math.sqrt(math.pow(i - c_i, 2) + math.pow(j - c_j, 2))
+
+                    if dist >= r_c-r_d and dist <= r_c+r_d:
+                        dist = abs((dist - r_c)/r_d)
+                        value = int((v_max - diff*dist)*100)
+                        if not add:
+                            self.grid[grid_num][i][j] = value/100.0
+                        else:
+                            self.grid[grid_num][i][j] += value/100.0
+
     def print_grid(self):
         print(self.grid)
 
@@ -162,10 +219,10 @@ class Modelling:
 #   n: x dimension of grid
 #   m: y dimension of grid
 #   max_time: time up to which we are considering the model
-size = 14
+size = 15
 init_grid = np.array([np.full((size,size),3.0)])
-grid = Grid(grid = init_grid, n = size, m = size, max_time = 5)
-grid.set_circ_unif(0,3,7,5,3,0)
+grid = Grid(grid = init_grid, n = size, m = size, max_time = 1)
+grid.set_wave(0, 7, 7, 6, 1, 5, 3.1)
 grid.initialize_grid()
 grid.print_grid()
 
