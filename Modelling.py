@@ -1,5 +1,6 @@
 import numpy as np
 import math
+from math import pow
 
 class Grid:
     # the __init__ method is called at the initialization of a class instance
@@ -21,13 +22,16 @@ class Grid:
         self.initialize_grid()
 
     def get_grid(self, i):
-        return self.grid[i-1].copy()
+        return self.grid[i].copy()
     
     def get_max(self):
         return self.max_time
+
+    def get(self, k, i, j):
+        return self.grid[k][i][j].copy()
     
     def set_grid(self, i, new_grid):
-        self.grid[i-1] = new_grid
+        self.grid[i] = new_grid
     
     def set_max(self, max_t):
         self.max_time = max_t
@@ -245,15 +249,31 @@ class Modelling:
     
     def next_grid(self, k):
         # compute grid in next time step (nested for loop)
-        grid_prev = self.grid.get_grid(k-1)
-        grid_now = self.grid.get_grid(k)
-        ngrid = self.grid.get_grid(k+1)
+        grid_prev = self.grid.get_grid(k-2)
+        grid_now = self.grid.get_grid(k-1)
+        ngrid = self.grid.get_grid(k)
 
-        for i in range(self.grid.n):
-            for j in range(self.grid.m):
+        # need to set up boundary conditions here
+        self.boundary(ngrid)
+
+        for i in range(1, self.grid.n-1):
+            for j in range(1, self.grid.m-1):
                 # use the "update formula"
-                1 + 1
+                ngrid[i][j] = self.get_next(k-1,i,j)
         self.grid.set_grid = ngrid
+    
+    def boundary(self, g):
+        print("ERROR: MISSING CODE HERE")
+        exit(1)
+    
+    # compute next step in i, j
+    def get_next(self, k, i, j):
+        c = pow(self.c * self.dt, self.h, 2)
+        t1 = 2*self.grid.get(k,i,j) - self.grid.get(k-1,i,j)
+        t2 = self.grid.get(k,i+1,j) - 2*self.grid.get(k,i,j) + self.grid.get(k,i-1,j)
+        t3 = self.grid.get(k,i,j+1) - 2*self.grid.get(k,i,j) + self.grid.get(k,i,j-1)
+
+        return t1 + c*t2 + c*t3
     
     def solveEq(self):
         # for loop for time steps and updating grid
