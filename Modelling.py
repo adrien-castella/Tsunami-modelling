@@ -9,12 +9,14 @@ class Grid:
     # m: the y? dimension of the grid size
     # max_time: the maximum number of time steps that will be taken
     # aka, the max size of the list
-    def __init__(self, grid=None, n=2, m=2, max_time=1):
+    # dec: indicates the the number of decimals after the point
+    def __init__(self, grid=None, n=2, m=2, max_time=1, dec = 2):
         # class structure for Grids, might be helpful
         self.grid = grid
         self.n = n
         self.m = m
         self.max_time = max_time
+        self.num = float(math.pow(10, dec))
         # note this function call will force all grids in the list to be identical (initially)
         self.initialize_grid()
 
@@ -59,14 +61,12 @@ class Grid:
         elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
         else:
-            if not add:
-                self.grid[grid_num] = np.zeros((self.n, self.m))
             for i in range(i_init, i_init + x_size):
                 for j in range(j_init, j_init + y_size):
                     if add:
-                        self.grid[grid_num][i][j] += value
+                        self.grid[grid_num][i][j] += (int(value*self.num))/self.num
                     else:
-                        self.grid[grid_num][i][j] = value
+                        self.grid[grid_num][i][j] = (int(value*self.num))/self.num
     
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the center outwards uniformly
@@ -79,7 +79,7 @@ class Grid:
     # value_min: the minimum value being input into the rectangle
     # add: (boolean) whether the rectangle is replacing the current values
     #      or being added to them
-    # int: (boolean) whether the values should be increasing or decreasing outwards
+    # inc: (boolean) whether the values should be increasing or decreasing outwards
     def set_unif_rect(self, grid_num, i_init, j_init, x_size, y_size,
                       value_max, value_min, add = False, inc = True):
         if i_init + x_size > self.n or j_init + y_size > self.m:
@@ -87,41 +87,46 @@ class Grid:
         elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
         else:
-            if not add:
-                self.grid[grid_num] = np.zeros((self.n, self.m))
-            b_right = i_init + x_size
-            b_up = j_init + y_size
-            step = 2*(value_max - value_min)/max(x_size, y_size)
-
+            x_diff = (value_max - value_min)/(float(x_size)/2)
+            y_diff = (value_max - value_min)/(float(y_size)/2)
+            
             for i in range(i_init, i_init + x_size):
                 for j in range(j_init, j_init + y_size):
-                    x_dist = max(math.abs(i - i_init), math.abs(i - b_right))
-                    y_dist = max(math.abs(j - j_init), math.abs(j - b_up))
-                    distance = min(x_dist, y_dist)
-
-                    value = 0
-                    if inc:
-                        value = (value_min + (distance*step))
-                    else:
-                        value = (value_max - (distance*step))
+                    dist = [[abs(i_init - i), abs(i_init - i + x_size)],
+                            [abs(j_init - j), abs(j_init - j + y_size)]]
                     
-                    if add:
-                        self.grid[grid_num][i][j] += value
+                    value = 0
+                    diff = 0
+                    if (min(dist[0]) < min(dist[1])):
+                        diff = x_diff
+                        dist = min(dist[0])
                     else:
-                        self.grid[grid_num][i][j] = value
+                        diff = y_diff
+                        dist = min(dist[1])
+
+                    if inc:
+                        value = value_min + diff*dist
+                    else:
+                        value = value_max - diff*dist
+
+                    if add:
+                        self.grid[grid_num][i][j] += (int(value*self.num))/self.num
+                    else:
+                        self.grid[grid_num][i][j] = (int(value*self.num))/self.num
     
     # in a rectangular portion of the grid have a linear (in/de)crease in values
-    # from the center outwards uniformly
+    # from the bottom-up
     # grid_num: (integer) the time step which is being modified
     # i_init: the x?-coord of the rectangles top left corner (integer)
     # j_init: the y?-coord of the rectangles top left corner (integer)
-    # x_size: the x-size of the rectangle (integer)
-    # y_size: the y-size of the rectangle (integer)
-    # value_max: the maximum value being input into the rectangle
-    # value_min: the minimum value being input into the rectangle
+    # x_s: the x-size of the rectangle (integer)
+    # y_s: the y-size of the rectangle (integer)
+    # v_max: the maximum value being input into the rectangle (float)
+    # v_min: the minimum value being input into the rectangle (float)
+    # inc: (boolean) whether the values should be increasing or decreasing bottom-up
+    # axis: (boolean) whether we increase in the x or the y direction
     # add: (boolean) whether the rectangle is replacing the current values
     #      or being added to them
-    # int: (boolean) whether the values should be increasing or decreasing outwards
     def set_rect_inc_dec(self, grid_num, i_init, j_init, x_s, y_s,
                          v_max, v_min = 0, inc = True, axis = True, add = False):
         if i_init + x_s > self.n or j_init + y_s > self.m:
@@ -129,8 +134,6 @@ class Grid:
         elif grid_num > self.max_time:
             print("error in time step. There is not grid at this time.")
         else:
-            if not add:
-                self.grid[grid_num] = np.zeros((self.n, self.m))
             step = (v_max - v_min)/max(x_s, y_s)
 
             for i in range(i_init, i_init + x_s):
@@ -139,8 +142,6 @@ class Grid:
                         distance = i - i_init
                     else:
                         distance = j - i_init
-
-                    print(distance)
                     
                     value = 0
                     if inc:
@@ -149,10 +150,21 @@ class Grid:
                         value = (v_max - distance*step)
 
                     if add:
-                        self.grid[grid_num][i][j] += value
+                        self.grid[grid_num][i][j] += (int(value*self.num))/self.num
                     else:
-                        self.grid[grid_num][i][j] = value
+                        self.grid[grid_num][i][j] = (int(value*self.num))/self.num
     
+    # in a circle portion of the grid have a linear (in/de)crease in values
+    # from the center outwards
+    # grid_num: (integer) the time step which is being modified
+    # c_i: the x?-coord of the center of the circle (integer)
+    # c_j: the y?-coord of the center of the circle (integer)
+    # radius: the radius of the circle (float)
+    # v_max: the maximum value being input into the circle (float)
+    # v_min: the minimum value being input into the circle (float)
+    # add: (boolean) whether the circle is replacing the current values
+    #      or being added to them
+    # inc: (boolean) whether the values should be increasing or decreasing outward
     def set_circ_unif(self, grid_num, c_i, c_j, radius, v_max, v_min,
                       add = False, inc = True):
         if c_i > self.n or c_j > self.m:
@@ -170,15 +182,27 @@ class Grid:
                         dist = dist/radius
                         value = 0
                         if (inc):
-                            value = int((v_min + diff*dist)*100)
+                            value = int((v_min + diff*dist)*self.num)
                         else:
-                            value = int((v_max - diff*dist)*100)
+                            value = int((v_max - diff*dist)*self.num)
                         
                         if add:
-                            self.grid[grid_num][i][j] += value/100.0
+                            self.grid[grid_num][i][j] += value/self.num
                         else:
-                            self.grid[grid_num][i][j] = value/100.0
+                            self.grid[grid_num][i][j] = value/self.num
     
+    # add the shape of a wave into the grid. Maximal values at r_c away
+    # from the center and dissipating outward from the boundary to distance
+    # r_d
+    # grid_num: (integer) the time step which is being modified
+    # c_i: the x?-coord of the center of the circle (integer)
+    # c_j: the y?-coord of the center of the circle (integer)
+    # r_c: the radius of the circle (float)
+    # r_d: the radius of the cirlce boundary (float)
+    # v_max: the maximum value being input into the wave (float)
+    # v_min: the minimum value being input into the wave (float)
+    # add: (boolean) whether the wave is replacing the current values
+    #      or being added to them
     def set_wave(self, grid_num, c_i, c_j, r_c, r_d, v_max, v_min,
                  add = False):
         if c_i > self.n or c_j > self.m:
@@ -194,14 +218,20 @@ class Grid:
 
                     if dist >= r_c-r_d and dist <= r_c+r_d:
                         dist = abs((dist - r_c)/r_d)
-                        value = int((v_max - diff*dist)*100)
+                        value = int((v_max - diff*dist)*self.num)
                         if not add:
-                            self.grid[grid_num][i][j] = value/100.0
+                            self.grid[grid_num][i][j] = value/self.num
                         else:
-                            self.grid[grid_num][i][j] += value/100.0
+                            self.grid[grid_num][i][j] += value/self.num
 
-    def print_grid(self):
-        print(self.grid)
+    # print the grids with indices in the set {n \in N : n \in [i,j)}
+    # i: (integer) initial index
+    # j: (integer) final index
+    def print_grid(self, i = 0, j = None):
+        if j is None:
+            j = len(self.grid)
+        for n in range(i, j):
+            print(self.grid[n])
 
 
 class Modelling:
@@ -233,7 +263,7 @@ class Modelling:
             # use next_grid to compute next step
             self.next_grid(k)
             k = k + 1
-        print("hello123")
+        #print("hello123")
     
     # set the initial parameters
     def set_param(self, c = 0, h = 0, dt = 0):
@@ -260,11 +290,23 @@ class Modelling:
 #   n: x dimension of grid
 #   m: y dimension of grid
 #   max_time: time up to which we are considering the model
-size = 15
-init_grid = np.array([np.full((size,size),3.0)])
-grid = Grid(grid = init_grid, n = size, m = size, max_time = 1)
-grid.set_wave(0, 7, 7, 6, 1, 5, 3.1)
+#   dec: number of decimals after the point
+size = 22
+init_grid = np.array([np.full((size,size),1.0)])
+grid = Grid(grid = init_grid, n = size, m = size, max_time = 5, dec = 0)
 grid.initialize_grid()
+grid.set_rect(grid_num = 0, i_init = 2, j_init = 2, x_size = size-4,
+         y_size = size-4, value = 0, add = False)
+grid.set_unif_rect(grid_num = 1, i_init = 3, j_init = 3, x_size = 12,
+                   y_size = 16, value_max = 5, value_min = 1,
+                   add = True, inc = True)
+grid.set_rect_inc_dec(grid_num = 2, i_init = 3, j_init = 3, x_s = 12,
+                      y_s = 16, v_max = 6, v_min = 1, inc = True,
+                      axis = False, add = False)
+grid.set_circ_unif(grid_num = 3, c_i = 11, c_j = 11, radius = 7,
+                   v_max = 5, v_min = 1, add = False, inc = False)
+grid.set_wave(grid_num = 4, c_i = 12, c_j = 12, r_c = 5,
+              r_d = 5, v_max = 5, v_min = 1, add = True)
 grid.print_grid()
 
 # create instance of modelling class
