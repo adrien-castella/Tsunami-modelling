@@ -294,7 +294,6 @@ class Modelling:
 size = 22
 init_grid = np.array([np.full((size,size),1.0)])
 grid = Grid(grid = init_grid, n = size, m = size, max_time = 5, dec = 0)
-grid.initialize_grid()
 grid.set_rect(grid_num = 0, i_init = 2, j_init = 2, x_size = size-4,
          y_size = size-4, value = 0, add = False)
 grid.set_unif_rect(grid_num = 1, i_init = 3, j_init = 3, x_size = 12,
