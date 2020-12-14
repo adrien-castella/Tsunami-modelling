@@ -13,11 +13,14 @@ class Grid:
     # dec: indicates the the number of decimals after the point
     def __init__(self, grid=None, n=2, m=2, max_time=1, dec = 2):
         # class structure for Grids, might be helpful
-        self.grid = grid
+        if grid is not None:
+            self.grid = np.around(grid, dec)
+        else:
+            self.grid = grid
         self.n = n
         self.m = m
         self.max_time = max_time
-        self.num = float(math.pow(10, dec))
+        self.dec = dec
         # note this function call will force all grids in the list to be identical (initially)
         self.initialize_grid()
 
@@ -30,8 +33,11 @@ class Grid:
     def get(self, k, i, j):
         return self.grid[k][i][j].copy()
     
+    def set_v(self, k, i, j, v):
+        self.grid[k][i][j] = np.around(v,self.dec)
+    
     def set_grid(self, i, new_grid):
-        self.grid[i] = new_grid
+        self.grid[i] = np.around(new_grid,self.dec)
     
     def set_max(self, max_t):
         self.max_time = max_t
@@ -68,9 +74,9 @@ class Grid:
             for i in range(i_init, i_init + x_size):
                 for j in range(j_init, j_init + y_size):
                     if add:
-                        self.grid[grid_num][i][j] += (int(value*self.num))/self.num
+                        self.grid[grid_num][i][j] += np.around(value, self.dec)
                     else:
-                        self.grid[grid_num][i][j] = (int(value*self.num))/self.num
+                        self.grid[grid_num][i][j] = np.around(value, self.dec)
     
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the center outwards uniformly
@@ -114,9 +120,9 @@ class Grid:
                         value = value_max - diff*dist
 
                     if add:
-                        self.grid[grid_num][i][j] += (int(value*self.num))/self.num
+                        self.grid[grid_num][i][j] += np.around(value, self.dec)
                     else:
-                        self.grid[grid_num][i][j] = (int(value*self.num))/self.num
+                        self.grid[grid_num][i][j] = np.around(value, self.dec)
     
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the bottom-up
@@ -154,9 +160,9 @@ class Grid:
                         value = (v_max - distance*step)
 
                     if add:
-                        self.grid[grid_num][i][j] += (int(value*self.num))/self.num
+                        self.grid[grid_num][i][j] += np.around(value, self.dec)
                     else:
-                        self.grid[grid_num][i][j] = (int(value*self.num))/self.num
+                        self.grid[grid_num][i][j] = np.around(value, self.dec)
     
     # in a circle portion of the grid have a linear (in/de)crease in values
     # from the center outwards
@@ -186,14 +192,14 @@ class Grid:
                         dist = dist/radius
                         value = 0
                         if (inc):
-                            value = int((v_min + diff*dist)*self.num)
+                            value = v_min + diff*dist
                         else:
-                            value = int((v_max - diff*dist)*self.num)
+                            value = v_max - diff*dist
                         
                         if add:
-                            self.grid[grid_num][i][j] += value/self.num
+                            self.grid[grid_num][i][j] += np.around(value, self.dec)
                         else:
-                            self.grid[grid_num][i][j] = value/self.num
+                            self.grid[grid_num][i][j] = np.around(value, self.dec)
     
     # add the shape of a wave into the grid. Maximal values at r_c away
     # from the center and dissipating outward from the boundary to distance
@@ -222,11 +228,11 @@ class Grid:
 
                     if dist >= r_c-r_d and dist <= r_c+r_d:
                         dist = abs((dist - r_c)/r_d)
-                        value = int((v_max - diff*dist)*self.num)
+                        value = v_max - diff*dist
                         if not add:
-                            self.grid[grid_num][i][j] = value/self.num
+                            self.grid[grid_num][i][j] = np.around(value, self.dec)
                         else:
-                            self.grid[grid_num][i][j] += value/self.num
+                            self.grid[grid_num][i][j] += np.around(value, self.dec)
 
     # print the grids with indices in the set {n \in N : n \in [i,j)}
     # i: (integer) initial index
@@ -248,40 +254,34 @@ class Modelling:
         self.grid = grid
     
     def next_grid(self, k):
-        # compute grid in next time step (nested for loop)
-        grid_prev = self.grid.get_grid(k-2)
-        grid_now = self.grid.get_grid(k-1)
-        ngrid = self.grid.get_grid(k)
-
         # need to set up boundary conditions here
-        self.boundary(ngrid)
+        self.boundary(k+1)
 
         for i in range(1, self.grid.n-1):
             for j in range(1, self.grid.m-1):
                 # use the "update formula"
-                ngrid[i][j] = self.get_next(k-1,i,j)
-        self.grid.set_grid = ngrid
+                self.get_next(k,i,j)
     
-    def boundary(self, g):
+    def boundary(self, k):
         print("ERROR: MISSING CODE HERE")
-        exit(1)
     
     # compute next step in i, j
     def get_next(self, k, i, j):
-        c = pow(self.c * self.dt, self.h, 2)
+        c = pow(self.c * self.dt / self.h, 2)
         t1 = 2*self.grid.get(k,i,j) - self.grid.get(k-1,i,j)
         t2 = self.grid.get(k,i+1,j) - 2*self.grid.get(k,i,j) + self.grid.get(k,i-1,j)
         t3 = self.grid.get(k,i,j+1) - 2*self.grid.get(k,i,j) + self.grid.get(k,i,j-1)
 
-        return t1 + c*t2 + c*t3
+        self.grid.set_v(k+1, i, j, t1 + c*t2 + c*t3)
     
     def solveEq(self):
         # for loop for time steps and updating grid
         k = 1
+        self.grid.initialize_grid()
 
         while(k < self.max): # some stopping condition
             # use next_grid to compute next step
-            self.next_grid(k)
+            self.next_grid(k-1)
             k = k + 1
         #print("hello123")
     
@@ -311,9 +311,10 @@ class Modelling:
 #   m: y dimension of grid
 #   max_time: time up to which we are considering the model
 #   dec: number of decimals after the point
-size = 22
-init_grid = np.array([np.full((size,size),1.0)])
-grid = Grid(grid = init_grid, n = size, m = size, max_time = 5, dec = 0)
+size = 16
+init_grid = np.array([np.full((size,size),1.00234)])
+grid = Grid(grid = init_grid, n = size, m = size, max_time = 15, dec = 2)
+
 grid.set_rect(grid_num = 0, i_init = 2, j_init = 2, x_size = size-4,
          y_size = size-4, value = 0, add = False)
 grid.set_unif_rect(grid_num = 1, i_init = 3, j_init = 3, x_size = 12,
@@ -328,14 +329,24 @@ grid.set_wave(grid_num = 4, c_i = 12, c_j = 12, r_c = 5,
               r_d = 5, v_max = 5, v_min = 1, add = True)
 grid.print_grid()
 
+grid.set_grid(2, init_grid)
+
+grid.set_rect(grid_num = 0, i_init = 0, j_init = 0, x_size = size,
+              y_size = size, value = 0, add = False)
+grid.initialize_grid()
+grid.set_wave(grid_num = 0, c_i = 8, c_j = 8, r_c = 5, r_d = 2,
+              v_max = 3, v_min = 0, add = True)
+
 # create instance of modelling class
-instance = Modelling() # need to give the grid here like (grid)
+instance = Modelling(init_grid = grid) # need to give the grid here like (grid)
 
 # find minimum stability conditions
 instance.min_stability()
 
 # set the parameters
-instance.set_param(h = 1) # can add c = ?, h = ?, dt = ?
+instance.set_param(h = 0.1, dt = 0.01) # can add c = ?, h = ?, dt = ?
 
 # solve the wave equations numerically
 instance.solveEq() # should take as parameter max time
+
+instance.grid.print_grid()
