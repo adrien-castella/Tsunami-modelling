@@ -255,22 +255,29 @@ class Modelling:
     
     def next_grid(self, k):
         # need to set up boundary conditions here
-        self.boundary(k+1)
-
-        for i in range(1, self.grid.n-1):
-            for j in range(1, self.grid.m-1):
+        for i in range(0, self.grid.n):
+            for j in range(0, self.grid.m):
                 # use the "update formula"
                 self.get_next(k,i,j)
     
-    def boundary(self, k):
-        print("ERROR: MISSING CODE HERE")
+    def get_elmt(self, k, i, j):
+        if (i > self.grid.n):
+            return self.grid.get(k,i-1,j)
+        elif (j > self.grid.m):
+            return self.grid.get(k,i,j-1)
+        elif (i <= 0):
+            return self.grid.get(k,1,j)
+        elif (j <= 0):
+            return self.grid.get(k,i,1)
+        
+        return self.grid.get(k,i,j)
     
     # compute next step in i, j
     def get_next(self, k, i, j):
         c = pow(self.c * self.dt / self.h, 2)
         t1 = 2*self.grid.get(k,i,j) - self.grid.get(k-1,i,j)
-        t2 = self.grid.get(k,i+1,j) - 2*self.grid.get(k,i,j) + self.grid.get(k,i-1,j)
-        t3 = self.grid.get(k,i,j+1) - 2*self.grid.get(k,i,j) + self.grid.get(k,i,j-1)
+        t2 = self.get_elmt(k,i+1,j) - 2*self.grid.get(k,i,j) + self.get_elmt(k,i-1,j)
+        t3 = self.get_elmt(k,i,j+1) - 2*self.grid.get(k,i,j) + self.get_elmt(k,i,j-1)
 
         self.grid.set_v(k+1, i, j, t1 + c*t2 + c*t3)
     
