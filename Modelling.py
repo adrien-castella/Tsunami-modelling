@@ -96,40 +96,42 @@ class Grid:
     # add: (boolean) whether the rectangle is replacing the current values
     #      or being added to them
     # inc: (boolean) whether the values should be increasing or decreasing outwards
-    def set_unif_rect(self, grid_num, i_init, j_init, x_size, y_size,
-                      value_max, value_min, add = False, inc = True):
-        if i_init + x_size > self.n or j_init + y_size > self.m:
-            print("error in provided parameters. Rectangle does not fit.")
-        elif grid_num > self.max_time:
-            print("error in time step. There is no grid at this time.")
-        else:
-            x_diff = (value_max - value_min)/(float(x_size)/2)
-            y_diff = (value_max - value_min)/(float(y_size)/2)
-            
-            for i in range(i_init, i_init + x_size):
-                for j in range(j_init, j_init + y_size):
-                    dist = [[abs(i_init - i), abs(i_init - i + x_size)],
-                            [abs(j_init - j), abs(j_init - j + y_size)]]
-                    
-                    value = 0
-                    diff = 0
-                    if (min(dist[0]) < min(dist[1])):
-                        diff = x_diff
-                        dist = min(dist[0])
-                    else:
-                        diff = y_diff
-                        dist = min(dist[1])
+    def set_unif_rect(self, grid_num, c_1, c_2, c_3, c_4, v_max, v_min, add = True, inc = True):
+        average = [(c_1[0] + c_2[0] + c_3[0] + c_4[0])/4,
+                   (c_1[1] + c_2[0] + c_3[0] + c_4[0])/4]
+        vec_1 = np.subtract(c_1,c_2)
+        vec_2 = np.subtract(c_2, c_3)
+        mag_x = self.magnitude(vec_1)
+        mag_y = self.magnitude(vec_2)
+        vec_1 = vec_1/mag_x
+        vec_2 = vec_2/mag_y
 
-                    if inc:
-                        value = value_min + diff*dist
-                    else:
-                        value = value_max - diff*dist
+        diff_1 = (v_max - v_min)/mag_x
+        diff_2 = (v_max - v_min)/mag_y
 
+        for i in range(0,self.n):
+            for j in range(0,self.m):
+                mag_1 = self.magnitude((vec_1[0]*i + vec_1[1]*j)*vec_1)
+                mag_2 = self.magnitude((vec_2[0]*i + vec_2[1]*j)*vec_2)
+                
+                diff = 0
+                if (mag_1 < mag_2):
+                    diff = diff_1*mag_1
+                else:
+                    diff = diff_2*mag_2
+                
+                value = 0
+                if inc:
+                    value = v_min + diff
+                else:
+                    value = v_max - diff
+                
+                if value <= v_max or value >= v_min:
                     if add:
-                        self.grid[grid_num][i][j] += np.around(value, self.dec)
+                        self.grid[grid_num][i][j] += value
                     else:
-                        self.grid[grid_num][i][j] = np.around(value, self.dec)
-    
+                        self.grid[grid_num][i][j] = value
+
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the bottom-up
     # grid_num: (integer) the time step which is being modified
@@ -150,14 +152,17 @@ class Grid:
         elif grid_num > self.max_time:
             print("error in time step. There is no grid at this time.")
         else:
-            step = (v_max - v_min)/max(x_s, y_s)
+            if (axis):
+                step = (v_max - v_min)/x_s
+            else:
+                step = (v_max - v_min)/y_s
 
             for i in range(i_init, i_init + x_s):
                 for j in range(j_init, j_init + y_s):
                     if axis:
-                        distance = i - i_init
+                        distance = math.sqrt(math.pow(i - i_init, 2))
                     else:
-                        distance = j - i_init
+                        distance = math.sqrt(math.pow(j - j_init,2))
                     
                     value = 0
                     if inc:
@@ -193,23 +198,25 @@ class Grid:
             for i in range(self.n):
                 for j in range(self.m):
                     dist = math.sqrt(math.pow(i - c_i, 2) + math.pow(j - c_j, 2))
-                    value = 0
-                    if dist > c_min and dist <= radius:
-                        dist_new = dist/(radius - c_min)
-                        if (inc):
-                            value = v_min + diff*dist_new
-                        else:
-                            value = v_max - diff*dist_new
-                    elif dist <= c_min:
-                        if (inc):
-                            value = v_min
-                        else:
-                            value = v_max
-                        
-                    if add:
-                        self.grid[grid_num][i][j] += np.around(value, self.dec)
-                    elif radius <= radius:
-                        self.grid[grid_num][i][j] = np.around(value, self.dec)
+
+                    if (dist < radius):
+                        value = 0
+                        if dist > c_min and dist <= radius:
+                            dist_new = (dist-c_min)/(radius - c_min)
+                            if (inc):
+                                value = v_min + diff*dist_new
+                            else:
+                                value = v_max - diff*dist_new
+                        elif dist <= c_min:
+                            if (inc):
+                                value = v_min
+                            else:
+                                value = v_max
+                            
+                        if add:
+                            self.grid[grid_num][i][j] += np.around(value, self.dec)
+                        elif radius <= radius:
+                            self.grid[grid_num][i][j] = np.around(value, self.dec)
     
     # add the shape of a wave into the grid. Maximal values at r_c away
     # from the center and dissipating outward from the boundary to distance
@@ -224,6 +231,7 @@ class Grid:
     # add: (boolean) whether the wave is replacing the current values
     #      or being added to them
     def set_wave(self, grid_num, c_i, c_j, R, h, c=1, add = False):
+        c = float(c)/6.283
         if c_i > self.n or c_j > self.m:
             print("error in provided parameters. Rectangle does not fit.")
         elif grid_num > self.max_time:
@@ -238,6 +246,8 @@ class Grid:
                             self.grid[grid_num][i][j] = np.around(value, self.dec)
                         else:
                             self.grid[grid_num][i][j] += np.around(value, self.dec)
+    
+    #def set_triangle(self, grid_num, p_1, p_2, p_3, )
 
     # print the grids with indices in the set {n \in N : n \in [i,j)}
     # i: (integer) initial index
@@ -249,7 +259,9 @@ class Grid:
             print(self.grid[n])
 
     def plot_grid(self, k, name, vmin=0, vmax=5000,center=0):
-        ax = sns.heatmap(self.grid[k], vmin = vmin, vmax = vmax, center = center, square = True)
+        ax = sns.heatmap(self.grid[k], vmin = vmin, vmax = vmax, center = center,
+                         square = True, xticklabels = False, yticklabels = False,
+                         cbar = False)
         plt.savefig(name+".png")
         plt.clf()
     
@@ -265,6 +277,12 @@ class Grid:
             return math.cos(a)*(h/2) + (h/2)
         else:
             return 0
+    
+    def magnitude(self, v):
+        summation = 0
+        for i in v:
+            summation += pow(i,2)
+        return math.sqrt(summation)
 
 
 class Modelling:
@@ -349,15 +367,31 @@ class Modelling:
 #   m: y dimension of grid
 #   max_time: time up to which we are considering the model
 #   dec: number of decimals after the point
-size_y = 80
+size_y = 300
 size_x = 80
 t0 = time.time()
 init_topo = np.array([np.full((size_x,size_y),5000)])
 topography = Grid(grid = init_topo, n = size_x, m = size_y, max_time = 1, dec = 0)
-#topography.set_circ_unif(grid_num=0,c_i=550,c_j=1200, radius=500,v_max=5000,v_min=0,c_min=300,add=False,inc=False)
+
+#topography.set_unif_rect(grid_num=0,c_1=[0,0],c_2=[0,80],c_3=[100,0],c_4=[100,80],v_max=5000,v_min=0,add=False)
+#topography.plot_grid(0,"topo1",0,5000,center=4800)
+
+topography.set_circ_unif(grid_num=0,c_i=55, c_j=120, radius=50,v_max=5000,v_min=0,c_min=30,add=False,inc=False)
+#topography.set_rect(grid_num=0,i_init=0,j_init=0,x_size=45,y_size=300,value=5000)
+topography.set_circ_unif(grid_num=0,c_i=0,c_j=110,radius=40,v_max=5000,v_min=3000)
+topography.set_circ_unif(grid_num=0,c_i=0,c_j=160,radius=40,v_max=5000,v_min=3000)
+topography.set_rect_inc_dec(grid_num=0,i_init=0,j_init=110,x_s=40,y_s=50,v_max=5000,v_min=3000)
+topography.set_rect(grid_num=0,i_init=79,j_init=163,x_size=1,y_size=80,value=0)
+topography.set_rect(grid_num=0,i_init=78,j_init=164,x_size=1,y_size=60,value=0)
+topography.plot_grid(0,"topo3",0,5000,center=4800)
+topography.set_circ_unif(grid_num=0,c_i=0,c_j=290,radius=25,v_max=5000,v_min=1500)
+
+topography.plot_grid(0,"topography",0,5000,center=4800)
+exit(1)
+
 init_grid = np.array([np.full((size_x,size_y),0)])
 grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 200, dec = 4)
-grid.set_wave(grid_num=0,c_i=15,c_j=15,R=30,h=150)
+grid.set_wave(grid_num=0,c_i=15,c_j=15,R=30,h=40,c=10)
 grid.initialize_grid()
 t1 = time.time()
 print("Time to construct grid: ", (t1 - t0))
@@ -379,7 +413,7 @@ instance.solveEq() # should take as parameter max time
 t3 = time.time()
 print("Time for solveEq(): ", (t3 - t2))
 #instance.grid.print_grid()
-instance.plot_result("test_set", vmax=160, vmin=-160, step = 1)
+instance.plot_result("test_set", vmax=8, vmin=-8, step = 1)
 t4 = time.time()
 print("Time to make plots: ", (t4 - t3))
 print("Total time is: ", (t4 - t0))
