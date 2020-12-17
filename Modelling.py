@@ -100,8 +100,6 @@ class Grid:
         for i in range(0,self.n):
             for j in range(0,self.m):
                 if (rect.contains(i,j)):
-                    if (i == 24):
-                        print("i: ", i, "; j: ", j)
                     value  = rect.get_value(i,j)
                     if add:
                         self.grid[grid_num][i][j] += np.around(value,self.dec)
@@ -219,8 +217,8 @@ class Grid:
 
     def plot_grid(self, k, name, vmin=0, vmax=5000,center=0):
         ax = sns.heatmap(self.grid[k], vmin = vmin, vmax = vmax, center = center,
-                         square = True)#, xticklabels = False, yticklabels = False,
-                         #cbar = False)
+                         square = True, xticklabels = False, yticklabels = False,
+                         cbar = False)
         plt.savefig(name+".png")
         plt.clf()
     
@@ -466,60 +464,41 @@ class Modelling:
 #   dec: number of decimals after the point
 size_x = 100
 size_y = 100
-#t0 = time.time()
-#init_topo = np.array([np.full((size_x,size_y),5000)])
-#topography = Grid(grid = init_topo, n = size_x, m = size_y, max_time = 1, dec = 0)
-#topography.set_unif_rect(0,[30,30],[3,240],[150,240],[150,30],v_min=5000,v_max=0,add=False)
-#topography.set_unif_rect(0,[65,95],[85,90],[75,50],[55,55],v_max=2500,v_min=0,add=False)
-#topography.set_unif_rect(0,[3,3],[80,20],[81,60],[25,55],v_min=2500,v_max=0,add=False)
+t0 = time.time()
+init_topo = np.array([np.full((size_x,size_y),5000)])
+topography = Grid(grid = init_topo, n = size_x, m = size_y, max_time = 1, dec = 0)
 
-#topography.set_unif_rect(grid_num=0,c_1=[0,0],c_2=[0,80],c_3=[100,0],c_4=[100,80],v_max=5000,v_min=0,add=False)
-#topography.plot_grid(0,"topo1",0,5000,center=4800)
+topography.plot_grid(0,"topography")
+exit(1)
 
-#topography.set_circ_unif(grid_num=0,c_i=55, c_j=120, radius=50,v_max=5000,v_min=0,c_min=30,add=False,inc=False)
-#topography.set_rect(grid_num=0,i_init=0,j_init=0,x_size=45,y_size=300,value=5000)
-#topography.set_circ_unif(grid_num=0,c_i=0,c_j=110,radius=40,v_max=5000,v_min=3000)
-#topography.set_circ_unif(grid_num=0,c_i=0,c_j=160,radius=40,v_max=5000,v_min=3000)
-#topography.set_rect_inc_dec(grid_num=0,i_init=0,j_init=110,x_s=40,y_s=50,v_max=5000,v_min=3000)
-#topography.set_rect(grid_num=0,i_init=79,j_init=163,x_size=1,y_size=80,value=0)
-#topography.set_rect(grid_num=0,i_init=78,j_init=164,x_size=1,y_size=88,value=0)
-#topography.plot_grid(0,"topo3",0,5000,center=4800)
-#topography.set_circ_unif(grid_num=0,c_i=0,c_j=290,radius=25,v_max=5000,v_min=1500)
-
-poly = Polygon(corners = [[65,95],[85,90],[75,50],[55,55]])
-print(poly.contains(0,50))
-print(poly.contains(83,90))
-#topography.plot_grid(0,"topography",0,5000,center=4800)
-#exit(1)
-
-#init_grid = np.array([np.full((size_x,size_y),0)])
-#grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 200, dec = 4)
-#grid.set_wave(grid_num=0,c_i=15,c_j=15,R=30,h=40,c=10)
-#grid.initialize_grid()
-#t1 = time.time()
-#print("Time to construct grid: ", (t1 - t0))
+init_grid = np.array([np.full((size_x,size_y),0)])
+grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 200, dec = 4)
+grid.set_wave(grid_num=0,c_i=15,c_j=15,R=30,h=40,c=10)
+grid.initialize_grid()
+t1 = time.time()
+print("Time to construct grid: ", (t1 - t0))
 
 # create instance of modelling class
-#instance = Modelling(init_grid = grid, d = topography) # need to give the grid here like (grid)
+instance = Modelling(init_grid = grid, d = topography) # need to give the grid here like (grid)
 
 # find minimum stability conditions
-#instance.min_stability()
+instance.min_stability()
 
 # set the parameters
-#instance.set_param(h = 0.1, dt = 0.0002) # can add c = ?, h = ?, dt = ?
+instance.set_param(h = 0.1, dt = 0.0002) # can add c = ?, h = ?, dt = ?
 
-#t2 = time.time()
-#print("Time to set up Modelling class: ", (t2 - t1))
+t2 = time.time()
+print("Time to set up Modelling class: ", (t2 - t1))
 # solve the wave equations numerically
-#instance.solveEq() # should take as parameter max time
+instance.solveEq() # should take as parameter max time
 
-#t3 = time.time()
-#print("Time for solveEq(): ", (t3 - t2))
-#instance.grid.print_grid()
-#instance.plot_result("test_set", vmax=8, vmin=-8, step = 1)
-#t4 = time.time()
-#print("Time to make plots: ", (t4 - t3))
-#print("Total time is: ", (t4 - t0))
+t3 = time.time()
+print("Time for solveEq(): ", (t3 - t2))
+instance.grid.print_grid()
+instance.plot_result("test_set", vmax=8, vmin=-8, step = 1)
+t4 = time.time()
+print("Time to make plots: ", (t4 - t3))
+print("Total time is: ", (t4 - t0))
 
 
 #print(instance.grid.what_is_max())
