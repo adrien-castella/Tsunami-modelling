@@ -97,40 +97,18 @@ class Grid:
     #      or being added to them
     # inc: (boolean) whether the values should be increasing or decreasing outwards
     def set_unif_rect(self, grid_num, c_1, c_2, c_3, c_4, v_max, v_min, add = True, inc = True):
-        average = [(c_1[0] + c_2[0] + c_3[0] + c_4[0])/4,
-                   (c_1[1] + c_2[0] + c_3[0] + c_4[0])/4]
-        vec_1 = np.subtract(c_1,c_2)
-        vec_2 = np.subtract(c_2, c_3)
-        mag_x = self.magnitude(vec_1)
-        mag_y = self.magnitude(vec_2)
-        vec_1 = vec_1/mag_x
-        vec_2 = vec_2/mag_y
-
-        diff_1 = (v_max - v_min)/mag_x
-        diff_2 = (v_max - v_min)/mag_y
+        rect = Polygon([c_1,c_2,c_3,c_4],1,v_min,v_max)
 
         for i in range(0,self.n):
             for j in range(0,self.m):
-                mag_1 = self.magnitude((vec_1[0]*i + vec_1[1]*j)*vec_1)
-                mag_2 = self.magnitude((vec_2[0]*i + vec_2[1]*j)*vec_2)
-                
-                diff = 0
-                if (mag_1 < mag_2):
-                    diff = diff_1*mag_1
-                else:
-                    diff = diff_2*mag_2
-                
-                value = 0
-                if inc:
-                    value = v_min + diff
-                else:
-                    value = v_max - diff
-                
-                if value <= v_max or value >= v_min:
+                #print("i: ", i, "; j: ", j)
+                if (rect.contains(i,j)):
+                    value  = 10
+                    #rect.get_value(i,j)
                     if add:
                         self.grid[grid_num][i][j] += value
                     else:
-                        self.grid[grid_num][i][j] = value
+                        self.grid[grid_num][i][j]  = value
 
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the bottom-up
@@ -260,8 +238,8 @@ class Grid:
 
     def plot_grid(self, k, name, vmin=0, vmax=5000,center=0):
         ax = sns.heatmap(self.grid[k], vmin = vmin, vmax = vmax, center = center,
-                         square = True, xticklabels = False, yticklabels = False,
-                         cbar = False)
+                         square = True)#, xticklabels = False, yticklabels = False,
+                         #cbar = False)
         plt.savefig(name+".png")
         plt.clf()
     
@@ -284,6 +262,130 @@ class Grid:
             summation += pow(i,2)
         return math.sqrt(summation)
 
+class Polygon:
+    # corners: corners of a polygon
+    # option: 1,2, or 3. Uniform, increasing, or constant colouring
+    # side: Applies to option 2. Increasing as you approach which side?
+    # side 1 is segment between corners 1 -> 2, analogously for the rest
+    def __init__(self, corners=[[0,0],[0,1],[1,0],[1,1]], option=1, v_min=0, v_max=1, side=1):
+        self.corners = corners
+        self.option = option
+        self.side = side
+        self.v_min = v_min
+        self.v_max = v_max
+    
+    # returns whether the point is contained inside the polygon
+    def contains(self, x, y):
+        #print("x and y: ",x, " and ", y)
+        extreme = [math.inf, y]
+        count = 0
+        n = len(self.corners)
+
+        for i in range(0,n):
+            next = (i+1)%n
+            if self.check_intersect(self.corners[i], self.corners[next], [x,y], extreme):
+                if self.orientation(self.corners[i], [x,y], self.corners[next]) == 0:
+                    return self.onSegment(self.corners[i], [x,y], self.corners[next])
+                
+                count += 1
+        #print("Counter: ", count)
+        #print(count % 2)
+        return count % 2 == 1
+    
+    # gets distance from nearst segment
+    # returns -1 if it is not contained in the polygon
+    def distance(self, x, y):
+        dist = np.array([])
+        n = len(self.corners)
+        for i in range(n):
+            dist = np.append(dist, [self.distance_to(self.corners[i], self.corners[(i+1)%n], [x,y])])
+        return [min(dist), 1]
+    
+    # distance to segment c_1 -> c_2
+    def distance_to(self, c_1, c_2, pt):
+        a = c_1[0]; b = c_1[1]
+        c = c_2[0] - c_1[0]; d = c_2[1] - c_1[1]
+        term1 = d*pt[0] - c*pt[1] - a*d + b*c
+        term2 = math.sqrt(pow(d,2) + pow(c,2))
+        return abs(term1)/term2
+    
+    # gets the value of the given point based on the chosen strategy (option)
+    def get_value(self, x, y):
+        if self.option == 1:
+            dist = self.distance(x, y)
+            step = self.get_step(dist[1])
+            if step <= 0:
+                print("Error, step size too small")
+                exit(1)
+            return self.v_min + (dist[0]/step)*(self.v_max - self.v_min)
+        elif self.option == 2:
+            dist = 0
+            if self.side == len(corners)-1:
+                dist = self.distance_to(corners[self.side], corners[0], [x,y])
+            elif self.side < len(corners)-1:
+                dist = self.distance_to(corners[self.side], corners[self.side+1], [x,y])
+            else:
+                print("Invalid side!")
+                exit(1)
+            step = self.get_step(self.side)
+            if step <= 0:
+                print("Error, step size too small")
+                exit(1)
+            return self.v_min + (dist/step)*(self.v_max - self.v_min)
+        else:
+            return self.v_max
+        
+    def get_step(self, i):
+        vec = np.subtract(self.corners[i-1], self.corners[i])
+        mag = math.sqrt(pow(vec[0],2) + pow(vec[1],2))
+        return mag/2
+    
+    def orientation(self, p, q, r):
+        a = q[1] - p[1]; b = r[0] - q[0]
+        c = q[0] - p[0]; d = r[1] - q[1]
+        value = 0
+        if (not a == 0) and (not b == 0):
+            value = a*b
+        if (not c == 0) and (not d == 0):
+            if value == c*d:
+                value = 0
+            else:
+                value = value - c*d
+        
+        if value == 0:
+            return 0
+        elif value > 0:
+            return 1
+        return 2
+    
+    def onSegment(self, p, q, r):
+        if (q[0] <= max(p[0], r[0]) and q[0] >= min(p[0], r[0]) and 
+            q[1] <= max(p[1], r[1]) and q[1] >= min(p[1], r[1])):
+            return True
+        return False
+    
+    def check_intersect(self, p1, q1, p2, q2):
+        o1 = self.orientation(p1, q1, p2)
+        o2 = self.orientation(p1, q1, q2)
+        o3 = self.orientation(p2, q2, p1)
+        o4 = self.orientation(p2, q2, q1)
+
+        if (o1 != o2) and (o3 != o4):
+            return True
+        
+        if o1 == 0 and self.onSegment(p1, p2, q1):
+            return True
+        
+        if o2 == 0 and self.onSegment(p1, q2, q1):
+            return True
+        
+        if o3 == 0 and self.onSegment(p2, p1, q2):
+            return True
+        
+        if o4 == 0 and self.onSegment(p2, q1, q2):
+            return True
+        
+        return False
 
 class Modelling:
     def __init__(self, init_grid=Grid(), d=Grid(), h=1, dt=1):
@@ -367,24 +469,31 @@ class Modelling:
 #   m: y dimension of grid
 #   max_time: time up to which we are considering the model
 #   dec: number of decimals after the point
-size_y = 300
-size_x = 80
+size_x = 50
+size_y = 50
 t0 = time.time()
 init_topo = np.array([np.full((size_x,size_y),5000)])
 topography = Grid(grid = init_topo, n = size_x, m = size_y, max_time = 1, dec = 0)
+#topography.set_unif_rect(0,[1,1],[1,10],[5,10],[5,1],v_max=2500,v_min=0,add=False)
+topography.set_unif_rect(0,[5,5],[15,45],[35,40],[25,0],v_max=2500,v_min=0,add=False)
+#topography.set_unif_rect(0,[300,300],[250,70],[230,70],[300,70],v_min=200,v_max=0,add=False)
 
 #topography.set_unif_rect(grid_num=0,c_1=[0,0],c_2=[0,80],c_3=[100,0],c_4=[100,80],v_max=5000,v_min=0,add=False)
 #topography.plot_grid(0,"topo1",0,5000,center=4800)
 
-topography.set_circ_unif(grid_num=0,c_i=55, c_j=120, radius=50,v_max=5000,v_min=0,c_min=30,add=False,inc=False)
+#topography.set_circ_unif(grid_num=0,c_i=55, c_j=120, radius=50,v_max=5000,v_min=0,c_min=30,add=False,inc=False)
 #topography.set_rect(grid_num=0,i_init=0,j_init=0,x_size=45,y_size=300,value=5000)
-topography.set_circ_unif(grid_num=0,c_i=0,c_j=110,radius=40,v_max=5000,v_min=3000)
-topography.set_circ_unif(grid_num=0,c_i=0,c_j=160,radius=40,v_max=5000,v_min=3000)
-topography.set_rect_inc_dec(grid_num=0,i_init=0,j_init=110,x_s=40,y_s=50,v_max=5000,v_min=3000)
-topography.set_rect(grid_num=0,i_init=79,j_init=163,x_size=1,y_size=80,value=0)
-topography.set_rect(grid_num=0,i_init=78,j_init=164,x_size=1,y_size=60,value=0)
-topography.plot_grid(0,"topo3",0,5000,center=4800)
-topography.set_circ_unif(grid_num=0,c_i=0,c_j=290,radius=25,v_max=5000,v_min=1500)
+#topography.set_circ_unif(grid_num=0,c_i=0,c_j=110,radius=40,v_max=5000,v_min=3000)
+#topography.set_circ_unif(grid_num=0,c_i=0,c_j=160,radius=40,v_max=5000,v_min=3000)
+#topography.set_rect_inc_dec(grid_num=0,i_init=0,j_init=110,x_s=40,y_s=50,v_max=5000,v_min=3000)
+#topography.set_rect(grid_num=0,i_init=79,j_init=163,x_size=1,y_size=80,value=0)
+#topography.set_rect(grid_num=0,i_init=78,j_init=164,x_size=1,y_size=88,value=0)
+#topography.plot_grid(0,"topo3",0,5000,center=4800)
+#topography.set_circ_unif(grid_num=0,c_i=0,c_j=290,radius=25,v_max=5000,v_min=1500)
+
+#poly = Polygon(corners=[[0,0],[0,10],[5,10],[5,0]])
+#print(poly.contains(7,10))
+#print(poly.contains(7, 0))
 
 topography.plot_grid(0,"topography",0,5000,center=4800)
 exit(1)
