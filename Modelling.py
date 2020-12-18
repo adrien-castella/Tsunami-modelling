@@ -40,7 +40,7 @@ class Grid:
         return self.grid[k][i][j].copy()
     
     def set_v(self, k, i, j, v):
-        self.grid[k][i][j] = np.around(v,self.dec)
+        self.grid[k][i][j] = v #np.around(v,self.dec)
     
     def set_grid(self, i, new_grid):
         self.grid[i] = np.around(new_grid,self.dec)
@@ -71,16 +71,16 @@ class Grid:
     # value: the value being input into the rectangle
     # add: (boolean) whether the rectangle is replacing the current values
     #      or being added to them
-    def set_rect(self, grid_num, c_1, c_2, c_3, c_4, value, add = False):
-        rect = Polygon([c_1,c_2,c_3,c_4],3)
+    def set_rect(self, grid_num, c, value, add = False):
+        rect = Polygon(c,3)
 
         for i in range(0,self.n):
             for j in range(0,self.m):
                 if (rect.contains(i,j)):
                     if add:
-                        self.grid[grid_num][i][j] += np.around(value,self.dec)
+                        self.grid[grid_num][i][j] += value #np.around(value,self.dec)
                     else:
-                        self.grid[grid_num][i][j]  = np.around(value,self.dec)
+                        self.grid[grid_num][i][j]  = value #np.around(value,self.dec)
     
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the center outwards uniformly
@@ -102,9 +102,9 @@ class Grid:
                 if (rect.contains(i,j)):
                     value  = rect.get_value(i,j)
                     if add:
-                        self.grid[grid_num][i][j] += np.around(value,self.dec)
+                        self.grid[grid_num][i][j] += value #np.around(value,self.dec)
                     else:
-                        self.grid[grid_num][i][j]  = np.around(value,self.dec)
+                        self.grid[grid_num][i][j]  = value #np.around(value,self.dec)
 
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the bottom-up
@@ -119,18 +119,18 @@ class Grid:
     # axis: (boolean) whether we increase in the x or the y direction
     # add: (boolean) whether the rectangle is replacing the current values
     #      or being added to them
-    def set_rect_inc_dec(self, grid_num, c_1, c_2, c_3, c_4, side = 1,
+    def set_rect_inc_dec(self, grid_num, c, side = 1,
                          v_max= 1, v_min = 0, add = False):
-        rect = Polygon([c_1,c_2,c_3,c_4],2,v_min,v_max, side = side)
+        rect = Polygon(c,2,v_min,v_max, side = side)
 
         for i in range(0,self.n):
             for j in range(0,self.m):
                 if (rect.contains(i,j)):
                     value  = rect.get_value(i,j)
                     if add:
-                        self.grid[grid_num][i][j] += np.around(value,self.dec)
+                        self.grid[grid_num][i][j] += value #np.around(value,self.dec)
                     else:
-                        self.grid[grid_num][i][j]  = np.around(value,self.dec)
+                        self.grid[grid_num][i][j]  = value #np.around(value,self.dec)
     
     # in a circle portion of the grid have a linear (in/de)crease in values
     # from the center outwards
@@ -171,9 +171,9 @@ class Grid:
                                 value = v_max
                             
                         if add:
-                            self.grid[grid_num][i][j] += np.around(value, self.dec)
+                            self.grid[grid_num][i][j] += value #np.around(value, self.dec)
                         elif radius <= radius:
-                            self.grid[grid_num][i][j] = np.around(value, self.dec)
+                            self.grid[grid_num][i][j] = value #np.around(value, self.dec)
     
     # add the shape of a wave into the grid. Maximal values at r_c away
     # from the center and dissipating outward from the boundary to distance
@@ -200,9 +200,9 @@ class Grid:
                     if dist < R + (1/2) + (math.pi/2):
                         value = self.wave_function(dist/c, R/c, h)
                         if not add:
-                            self.grid[grid_num][i][j] = np.around(value, self.dec)
+                            self.grid[grid_num][i][j] = value #np.around(value, self.dec)
                         else:
-                            self.grid[grid_num][i][j] += np.around(value, self.dec)
+                            self.grid[grid_num][i][j] += value #np.around(value, self.dec)
     
     #def set_triangle(self, grid_num, p_1, p_2, p_3, )
 
@@ -291,7 +291,9 @@ class Polygon:
         n = len(self.corners)
         for i in range(n):
             dist = np.append(dist, [self.distance_to(self.corners[i], self.corners[(i+1)%n], [x,y])])
-        return [min(dist), 1]
+        a = min(dist)
+        b = np.where(dist == a)[0][0]
+        return [a, b]
     
     # distance to segment c_1 -> c_2
     def distance_to(self, c_1, c_2, pt):
@@ -306,7 +308,7 @@ class Polygon:
     def get_value(self, x, y):
         if self.option == 1:
             dist = self.distance(x, y)
-            step = self.get_step(dist[1])
+            step = self.get_step(dist[1])/2
             if step <= 0:
                 print("Error, step size too small")
                 exit(1)
@@ -331,7 +333,7 @@ class Polygon:
     def get_step(self, i):
         vec = np.subtract(self.corners[i-1], self.corners[i])
         mag = math.sqrt(pow(vec[0],2) + pow(vec[1],2))
-        return mag/2
+        return mag
     
     def orientation(self, p, q, r):
         a = q[1] - p[1]; b = r[0] - q[0]
@@ -391,6 +393,9 @@ class Modelling:
     
     def next_grid(self, k):
         # need to set up boundary conditions here
+        if ((k+1)%50 == 0):
+            print("Starting grid: ", k+1)
+        
         for i in range(0, self.grid.n-1):
             for j in range(0, self.grid.m-1):
                 # use the "update formula"
@@ -420,12 +425,11 @@ class Modelling:
     
     def solveEq(self):
         # for loop for time steps and updating grid
-        k = 1
         self.grid.initialize_grid()
 
-        for k in range (1, self.max): # some stopping condition
+        for k in range (0, self.max-1): # some stopping condition
             # use next_grid to compute next step
-            self.next_grid(k-1)
+            self.next_grid(k)
         #print("hello123")
     
     # set the initial parameters
@@ -441,11 +445,9 @@ class Modelling:
         # check whether problem is stable with given parameters
         1+1
 
-    def min_stability(self):
+    def min_stability(self, h, c):
         # find minimal stable parameters, whatever that may mean
-        for i in range(0,10):
-            self.check_stability()
-            1+1
+        return h / (c*math.sqrt(2))
     
     def plot_result(self, name, vmax = 10, vmin = -10, step = 1):
         k = 0
@@ -462,30 +464,57 @@ class Modelling:
 #   m: y dimension of grid
 #   max_time: time up to which we are considering the model
 #   dec: number of decimals after the point
-size_x = 100
-size_y = 100
+s = 0.5
+
+size_x = int(160*s)
+size_y = int(600*s)
 t0 = time.time()
 init_topo = np.array([np.full((size_x,size_y),5000)])
 topography = Grid(grid = init_topo, n = size_x, m = size_y, max_time = 1, dec = 0)
+topography.set_circ_unif(0,80*s,240*s,100*s,5000,0,c_min=20*s,inc=False)
+topography.set_rect(0,[[0,0],[80*s,0],[80*s,600*s],[0,600*s]],5000)
+topography.set_circ_unif(0,90*s,348*s,40*s,5000,0,16*s)
+a = 2.4*s
+topography.set_rect_inc_dec(0,[[76*s,352*s],[188*s,496*s],[188*s-a*9,496*s+a*7],[76*s-a*9,352*s+a*7]],0,5000,0)
+a = math.sqrt(13/6)*2*s
+topography.set_rect_inc_dec(0,[[153*s,285*s],[76*s,340*s],[76*s-a*5,340*s-a*7],[153*s-a*5,285*s-a*7]],0,5000,0)
+topography.set_rect(0,[[160*s,280*s],[90*s,330*s],[90*s,370*s],[160*s,460*s]],0)
+topography.set_circ_unif(0,160*s,600*s,36*s,5000,0,c_min=4*s)
+topography.set_circ_unif(0,0,580*s,50*s,5000,200,c_min=8*s)
+topography.set_rect_inc_dec(0,[[40*s,110*s],[75*s,135*s],[160*s,135*s],[160*s,0],[100*s,0]],3,v_max=200,v_min=50)
+topography.set_rect_inc_dec(0,[[40*s,110*s],[0,110*s],[0,0],[40*s,0]],2,v_max=200,v_min=50)
+topography.set_rect_inc_dec(0,[[0,110*s],[75*s,135*s],[40*s,110*s]],0,v_max=400,v_min=200)
+topography.set_rect_inc_dec(0,[[0,110*s],[75*s,135*s],[80*s,140*s],[80*s,250*s],
+                               [0,250*s]],0,v_max=5000,v_min=200)
+topography.set_rect(0,[[160*s,190*s],[140*s,160*s],[100*s,140*s],[80*s,140*s],
+                       [75*s,135*s],[80*s,130*s],[110*s,115*s],[85*s,110*s],
+                       [120*s,80*s],[125*s,45*s],[160*s,20*s]],0)
+topography.set_rect(0,[[0,20*s],[20*s,30*s],[20*s,50*s],
+                       [40*s,40*s],[35*s,70*s],[40*s,110*s],
+                       [70*s,60*s],[110*s,40*s],[120*s,25*s],
+                       [100*s,30*s],[100*s,0],[0,0]], 0)
+#[45,185],[36,192],
+#[38,176],[29,183],
 
-topography.plot_grid(0,"topography")
-exit(1)
+topography.plot_grid(0,"topography",center=2000,vmax=2000)
 
 init_grid = np.array([np.full((size_x,size_y),0)])
-grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 200, dec = 4)
-grid.set_wave(grid_num=0,c_i=15,c_j=15,R=30,h=40,c=10)
+grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 500, dec = 3)
+grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=80*s,h=3000,c=10)#*s)
 grid.initialize_grid()
+grid.plot_grid(0,"initial_wave",vmin=-200,vmax=200,center=0)
 t1 = time.time()
 print("Time to construct grid: ", (t1 - t0))
+#exit()
 
 # create instance of modelling class
 instance = Modelling(init_grid = grid, d = topography) # need to give the grid here like (grid)
 
 # find minimum stability conditions
-instance.min_stability()
+print(instance.min_stability(3000/size_y, math.sqrt(9.81 * 5000)))
 
 # set the parameters
-instance.set_param(h = 0.1, dt = 0.0002) # can add c = ?, h = ?, dt = ?
+instance.set_param(h = 0.1, dt = 0.0003) # can add c = ?, h = ?, dt = ?
 
 t2 = time.time()
 print("Time to set up Modelling class: ", (t2 - t1))
@@ -494,8 +523,8 @@ instance.solveEq() # should take as parameter max time
 
 t3 = time.time()
 print("Time for solveEq(): ", (t3 - t2))
-instance.grid.print_grid()
-instance.plot_result("test_set", vmax=8, vmin=-8, step = 1)
+
+instance.plot_result("test_set", vmax=200, vmin=-200, step = 5)
 t4 = time.time()
 print("Time to make plots: ", (t4 - t3))
 print("Total time is: ", (t4 - t0))
