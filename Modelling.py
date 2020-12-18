@@ -403,13 +403,13 @@ class Modelling:
     
     def get_elmt(self, k, i, j):
         if (i > self.grid.n):
-            return self.grid.get(k,i-1,j)
+            return 0#self.grid.get(k,i-1,j)
         elif (j > self.grid.m):
-            return self.grid.get(k,i,j-1)
+            return 0#self.grid.get(k,i,j-1)
         elif (i < 0):
-            return self.grid.get(k,1,j)
+            return 0#self.grid.get(k,1,j)
         elif (j < 0):
-            return self.grid.get(k,i,1)
+            return 0#self.grid.get(k,i,1)
         
         return self.grid.get(k,i,j)
     
@@ -481,11 +481,11 @@ topography.set_rect_inc_dec(0,[[153*s,285*s],[76*s,340*s],[76*s-a*5,340*s-a*7],[
 topography.set_rect(0,[[160*s,280*s],[90*s,330*s],[90*s,370*s],[160*s,460*s]],0)
 topography.set_circ_unif(0,160*s,600*s,36*s,5000,0,c_min=4*s)
 topography.set_circ_unif(0,0,580*s,50*s,5000,200,c_min=8*s)
-topography.set_rect_inc_dec(0,[[40*s,110*s],[75*s,135*s],[160*s,135*s],[160*s,0],[100*s,0]],3,v_max=200,v_min=50)
-topography.set_rect_inc_dec(0,[[40*s,110*s],[0,110*s],[0,0],[40*s,0]],2,v_max=200,v_min=50)
-topography.set_rect_inc_dec(0,[[0,110*s],[75*s,135*s],[40*s,110*s]],0,v_max=400,v_min=200)
+topography.set_rect_inc_dec(0,[[40*s,110*s],[75*s,135*s],[160*s,135*s],[160*s,0],[100*s,0]],3,v_max=2000,v_min=50)
+topography.set_rect_inc_dec(0,[[40*s,110*s],[0,110*s],[0,0],[40*s,0]],2,v_max=2000,v_min=50)
+topography.set_rect_inc_dec(0,[[0,110*s],[75*s,135*s],[40*s,110*s]],0,v_max=4000,v_min=2000)
 topography.set_rect_inc_dec(0,[[0,110*s],[75*s,135*s],[80*s,140*s],[80*s,250*s],
-                               [0,250*s]],0,v_max=5000,v_min=200)
+                               [0,250*s]],0,v_max=5000,v_min=4000)
 topography.set_rect(0,[[160*s,190*s],[140*s,160*s],[100*s,140*s],[80*s,140*s],
                        [75*s,135*s],[80*s,130*s],[110*s,115*s],[85*s,110*s],
                        [120*s,80*s],[125*s,45*s],[160*s,20*s]],0)
@@ -499,7 +499,7 @@ topography.set_rect(0,[[0,20*s],[20*s,30*s],[20*s,50*s],
 topography.plot_grid(0,"topography",center=2000,vmax=2000)
 
 init_grid = np.array([np.full((size_x,size_y),0)])
-grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 500, dec = 3)
+grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 1000, dec = 3)
 grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=80*s,h=3000,c=10)#*s)
 grid.initialize_grid()
 grid.plot_grid(0,"initial_wave",vmin=-200,vmax=200,center=0)
