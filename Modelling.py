@@ -71,7 +71,7 @@ class Grid:
     # value: the value being input into the rectangle
     # add: (boolean) whether the rectangle is replacing the current values
     #      or being added to them
-    def set_rect(self, grid_num, c, value, add = False):
+    def set_rect(self, grid_num, c, value, radius = -1, add = False):
         rect = Polygon(c,3)
 
         for i in range(0,self.n):
@@ -81,6 +81,13 @@ class Grid:
                         self.grid[grid_num][i][j] += value #np.around(value,self.dec)
                     else:
                         self.grid[grid_num][i][j]  = value #np.around(value,self.dec)
+                else:
+                    dist = rect.distance(i,j)[0]
+                    mult = 0
+                    if dist <= radius:
+                        #print(dist)
+                        mult = dist/radius
+                        self.grid[grid_num][i][j] = mult*value + (1-mult)*self.grid[grid_num][i][j]
     
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the center outwards uniformly
@@ -285,7 +292,6 @@ class Polygon:
         return count % 2 == 1
     
     # gets distance from nearst segment
-    # returns -1 if it is not contained in the polygon
     def distance(self, x, y):
         dist = np.array([])
         n = len(self.corners)
@@ -297,12 +303,29 @@ class Polygon:
     
     # distance to segment c_1 -> c_2
     def distance_to(self, c_1, c_2, pt):
-        a = c_1[0]; b = c_1[1]
-        c = c_2[0] - c_1[0]; d = c_2[1] - c_1[1]
-        term1 = d*pt[0] - c*pt[1] - a*d + b*c
-        term2 = math.sqrt(pow(d,2) + pow(c,2))
-        #print(term1, " Hello ", term2)
-        return abs(term1)/term2
+        if (self.proj_range(c_1,c_2,pt)):
+            a = c_1[0]; b = c_1[1]
+            c = c_2[0] - c_1[0]; d = c_2[1] - c_1[1]
+            term1 = d*pt[0] - c*pt[1] - a*d + b*c
+            term2 = math.sqrt(pow(d,2) + pow(c,2))
+            return abs(term1)/term2
+        dist_p1 = math.sqrt(pow(c_1[0]-pt[0],2) + pow(c_1[1]-pt[1],2))
+        dist_p2 = math.sqrt(pow(c_2[0]-pt[0],2) + pow(c_2[1]-pt[1],2))
+        return min(dist_p1, dist_p2)
+    
+    # computed projection of pt onto v
+    def projection(self, v, pt):
+        a = v[0]*pt[0] + v[1]*pt[1]
+        b = pow(v[0],2) + pow(v[1],2)
+        return [v[0]*(a/b), v[1]*(a/b)]
+    
+    # whether the projection of point pt is in the segment c_1 -> c_2
+    def proj_range(self, c_1, c_2, pt):
+        v = np.subtract(c_2, c_1)
+        proj = self.projection(v, pt)
+        p_c_1 = self.projection(v, c_1)
+        p_c_2 = self.projection(v, c_2)
+        return self.onSegment(p_c_1,p_c_2,proj)
     
     # gets the value of the given point based on the chosen strategy (option)
     def get_value(self, x, y):
@@ -399,7 +422,13 @@ class Modelling:
         for i in range(0, self.grid.n-1):
             for j in range(0, self.grid.m-1):
                 # use the "update formula"
-                self.get_next(k,i,j)
+                #if self.d.get(0,i,j) > 3000:
+                self.get_open(k,i,j)
+                #else:
+                #    self.get_shallow(k,i,j)
+    
+    def get_shallow(self, k, i, j):
+        return 0
     
     def get_elmt(self, k, i, j):
         if (i > self.grid.n):
@@ -414,7 +443,7 @@ class Modelling:
         return self.grid.get(k,i,j)
     
     # compute next step in i, j
-    def get_next(self, k, i, j):
+    def get_open(self, k, i, j):
         c = math.sqrt(9.81*self.d.get(0,i,j))
         term = pow(c * self.dt / self.h, 2)
         t1 = 2*self.grid.get(k,i,j) - self.grid.get(k-1,i,j)
@@ -427,7 +456,7 @@ class Modelling:
         # for loop for time steps and updating grid
         self.grid.initialize_grid()
 
-        for k in range (0, self.max-1): # some stopping condition
+        for k in range (1, self.max-1): # some stopping condition
             # use next_grid to compute next step
             self.next_grid(k)
         #print("hello123")
@@ -464,8 +493,14 @@ class Modelling:
 #   m: y dimension of grid
 #   max_time: time up to which we are considering the model
 #   dec: number of decimals after the point
-s = 0.5
+s = 0.25
 
+init_topo = np.array([np.full((50,50),5000)])
+topography = Grid(init_topo, 50, 50, 1, 0)
+topography.set_rect(0,[[10,10],[10,40],[40,40],[40,10]],30,5,False)
+topography.plot_grid(0,"topography",center=2000,vmax=2000)
+
+exit()
 size_x = int(160*s)
 size_y = int(600*s)
 t0 = time.time()
@@ -493,18 +528,25 @@ topography.set_rect(0,[[0,20*s],[20*s,30*s],[20*s,50*s],
                        [40*s,40*s],[35*s,70*s],[40*s,110*s],
                        [70*s,60*s],[110*s,40*s],[120*s,25*s],
                        [100*s,30*s],[100*s,0],[0,0]], 0)
+
+#topography.set_rect(0,[[50,50],[100,50],[100,100],[50,100]],3,radius=20,add=False)
 #[45,185],[36,192],
 #[38,176],[29,183],
 
 topography.plot_grid(0,"topography",center=2000,vmax=2000)
+t1 = time.time()
+print("Made topography in: ", (t1 - t0))
 
 init_grid = np.array([np.full((size_x,size_y),0)])
-grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 1000, dec = 3)
-grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=80*s,h=3000,c=10)#*s)
+grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 200, dec = 3)
+grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=90*s,h=3050,c=22*s)
 grid.initialize_grid()
+grid.set_grid(0,init_grid)
+grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=80*s,h=3000,c=20*s)
 grid.plot_grid(0,"initial_wave",vmin=-200,vmax=200,center=0)
-t1 = time.time()
-print("Time to construct grid: ", (t1 - t0))
+grid.plot_grid(1,"second_wave", vmin=-200,vmax=200,center=0)
+t2 = time.time()
+print("Time to construct grid: ", (t2 - t1))
 #exit()
 
 # create instance of modelling class
@@ -516,18 +558,18 @@ print(instance.min_stability(3000/size_y, math.sqrt(9.81 * 5000)))
 # set the parameters
 instance.set_param(h = 0.1, dt = 0.0003) # can add c = ?, h = ?, dt = ?
 
-t2 = time.time()
-print("Time to set up Modelling class: ", (t2 - t1))
+t3 = time.time()
+print("Time to set up Modelling class: ", (t3 - t2))
 # solve the wave equations numerically
 instance.solveEq() # should take as parameter max time
 
-t3 = time.time()
-print("Time for solveEq(): ", (t3 - t2))
+t4 = time.time()
+print("Time for solveEq(): ", (t4 - t3))
 
 instance.plot_result("test_set", vmax=200, vmin=-200, step = 5)
-t4 = time.time()
-print("Time to make plots: ", (t4 - t3))
-print("Total time is: ", (t4 - t0))
+t5 = time.time()
+print("Time to make plots: ", (t5 - t4))
+print("Total time is: ", (t5 - t0))
 
 
 #print(instance.grid.what_is_max())
