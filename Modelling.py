@@ -71,23 +71,17 @@ class Grid:
     # value: the value being input into the rectangle
     # add: (boolean) whether the rectangle is replacing the current values
     #      or being added to them
-    def set_rect(self, grid_num, c, value, radius = -1, add = False):
+    def set_rect(self, grid_num, c, value, radius = -1, add = False, ignore = -1):
         rect = Polygon(c,3)
-
         for i in range(0,self.n):
             for j in range(0,self.m):
-                if (rect.contains(i,j)):
-                    if add:
-                        self.grid[grid_num][i][j] += value #np.around(value,self.dec)
-                    else:
-                        self.grid[grid_num][i][j]  = value #np.around(value,self.dec)
+                if (rect.contains(i, j)):
+                    self.grid[grid_num][i][j] = value
                 else:
-                    dist = rect.distance(i,j)[0]
-                    mult = 0
-                    if dist <= radius:
-                        #print(dist)
-                        mult = dist/radius
-                        self.grid[grid_num][i][j] = mult*value + (1-mult)*self.grid[grid_num][i][j]
+                    distance = rect.distance(i, j, ignore)[0]
+                    if (distance <= radius):
+                        mult = distance / radius
+                        self.grid[grid_num][i][j] = mult*self.grid[grid_num][i][j] + (1 - mult)*value
     
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the center outwards uniformly
@@ -292,40 +286,32 @@ class Polygon:
         return count % 2 == 1
     
     # gets distance from nearst segment
-    def distance(self, x, y):
+    def distance(self, x, y, j = -1):
         dist = np.array([])
         n = len(self.corners)
         for i in range(n):
             dist = np.append(dist, [self.distance_to(self.corners[i], self.corners[(i+1)%n], [x,y])])
         a = min(dist)
         b = np.where(dist == a)[0][0]
+        if (not j == -1) and (b == j or dist[j-1] == dist[j]):
+            return [math.inf, j]
         return [a, b]
     
     # distance to segment c_1 -> c_2
     def distance_to(self, c_1, c_2, pt):
-        if (self.proj_range(c_1,c_2,pt)):
-            a = c_1[0]; b = c_1[1]
-            c = c_2[0] - c_1[0]; d = c_2[1] - c_1[1]
-            term1 = d*pt[0] - c*pt[1] - a*d + b*c
-            term2 = math.sqrt(pow(d,2) + pow(c,2))
-            return abs(term1)/term2
-        dist_p1 = math.sqrt(pow(c_1[0]-pt[0],2) + pow(c_1[1]-pt[1],2))
-        dist_p2 = math.sqrt(pow(c_2[0]-pt[0],2) + pow(c_2[1]-pt[1],2))
-        return min(dist_p1, dist_p2)
-    
-    # computed projection of pt onto v
-    def projection(self, v, pt):
-        a = v[0]*pt[0] + v[1]*pt[1]
-        b = pow(v[0],2) + pow(v[1],2)
-        return [v[0]*(a/b), v[1]*(a/b)]
-    
-    # whether the projection of point pt is in the segment c_1 -> c_2
-    def proj_range(self, c_1, c_2, pt):
+        v = np.subtract(c_1, c_2)
+        a = np.dot(v, np.subtract(c_1, pt))
         v = np.subtract(c_2, c_1)
-        proj = self.projection(v, pt)
-        p_c_1 = self.projection(v, c_1)
-        p_c_2 = self.projection(v, c_2)
-        return self.onSegment(p_c_1,p_c_2,proj)
+        b = np.dot(v, np.subtract(c_2, pt))
+        if (a > 0 and b > 0):
+            b = np.linalg.norm(v)
+            w = np.subtract(c_1, pt)
+            a = abs(v[0]*w[1] - v[1]*w[0])
+            return a/b
+        else:
+            a = np.linalg.norm(np.subtract(c_1, pt))
+            b = np.linalg.norm(np.subtract(c_2, pt))
+            return min(a,b)
     
     # gets the value of the given point based on the chosen strategy (option)
     def get_value(self, x, y):
@@ -493,27 +479,22 @@ class Modelling:
 #   m: y dimension of grid
 #   max_time: time up to which we are considering the model
 #   dec: number of decimals after the point
-s = 0.25
+s = 0.75
 
-init_topo = np.array([np.full((50,50),5000)])
-topography = Grid(init_topo, 50, 50, 1, 0)
-topography.set_rect(0,[[10,10],[10,40],[40,40],[40,10]],30,5,False)
-topography.plot_grid(0,"topography",center=2000,vmax=2000)
-
-exit()
 size_x = int(160*s)
 size_y = int(600*s)
 t0 = time.time()
 init_topo = np.array([np.full((size_x,size_y),5000)])
 topography = Grid(grid = init_topo, n = size_x, m = size_y, max_time = 1, dec = 0)
-topography.set_circ_unif(0,80*s,240*s,100*s,5000,0,c_min=20*s,inc=False)
-topography.set_rect(0,[[0,0],[80*s,0],[80*s,600*s],[0,600*s]],5000)
-topography.set_circ_unif(0,90*s,348*s,40*s,5000,0,16*s)
-a = 2.4*s
-topography.set_rect_inc_dec(0,[[76*s,352*s],[188*s,496*s],[188*s-a*9,496*s+a*7],[76*s-a*9,352*s+a*7]],0,5000,0)
-a = math.sqrt(13/6)*2*s
-topography.set_rect_inc_dec(0,[[153*s,285*s],[76*s,340*s],[76*s-a*5,340*s-a*7],[153*s-a*5,285*s-a*7]],0,5000,0)
-topography.set_rect(0,[[160*s,280*s],[90*s,330*s],[90*s,370*s],[160*s,460*s]],0)
+#topography.set_circ_unif(0,80*s,240*s,100*s,5000,0,c_min=20*s,inc=False)
+#topography.set_rect(0,[[0,0],[80*s,0],[80*s,600*s],[0,600*s]],5000)
+#topography.set_circ_unif(0,90*s,348*s,40*s,5000,0,16*s)
+#a = 2.4*s
+#topography.set_rect_inc_dec(0,[[76*s,352*s],[188*s,496*s],[188*s-a*9,496*s+a*7],[76*s-a*9,352*s+a*7]],0,5000,0)
+#a = math.sqrt(13/6)*2*s
+#topography.set_rect_inc_dec(0,[[153*s,285*s],[76*s,340*s],[76*s-a*5,340*s-a*7],[153*s-a*5,285*s-a*7]],0,5000,0)
+topography.set_rect(0,[[160*s,280*s],[90*s,330*s],[75*s,340*s],[90*s,370*s],
+                       [115*s,400*s],[130*s,425*s],[145*s,432*s],[160*s,460*s]],0,70*s)
 topography.set_circ_unif(0,160*s,600*s,36*s,5000,0,c_min=4*s)
 topography.set_circ_unif(0,0,580*s,50*s,5000,200,c_min=8*s)
 topography.set_rect_inc_dec(0,[[40*s,110*s],[75*s,135*s],[160*s,135*s],[160*s,0],[100*s,0]],3,v_max=2000,v_min=50)
@@ -522,12 +503,13 @@ topography.set_rect_inc_dec(0,[[0,110*s],[75*s,135*s],[40*s,110*s]],0,v_max=4000
 topography.set_rect_inc_dec(0,[[0,110*s],[75*s,135*s],[80*s,140*s],[80*s,250*s],
                                [0,250*s]],0,v_max=5000,v_min=4000)
 topography.set_rect(0,[[160*s,190*s],[140*s,160*s],[100*s,140*s],[80*s,140*s],
-                       [75*s,135*s],[80*s,130*s],[110*s,115*s],[85*s,110*s],
-                       [120*s,80*s],[125*s,45*s],[160*s,20*s]],0)
+                       [75*s,135*s],[160*s,135*s]],0,40*s,ignore=4)
+topography.set_rect(0,[[160*s,135*s],[75*s,135*s],[80*s,130*s],[110*s,115*s],
+                       [85*s,110*s],[120*s,80*s],[125*s,45*s],[160*s,20*s]],0,10*s)
 topography.set_rect(0,[[0,20*s],[20*s,30*s],[20*s,50*s],
                        [40*s,40*s],[35*s,70*s],[40*s,110*s],
                        [70*s,60*s],[110*s,40*s],[120*s,25*s],
-                       [100*s,30*s],[100*s,0],[0,0]], 0)
+                       [100*s,30*s],[100*s,0],[0,0]], 0,10*s)
 
 #topography.set_rect(0,[[50,50],[100,50],[100,100],[50,100]],3,radius=20,add=False)
 #[45,185],[36,192],
@@ -538,8 +520,8 @@ t1 = time.time()
 print("Made topography in: ", (t1 - t0))
 
 init_grid = np.array([np.full((size_x,size_y),0)])
-grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 200, dec = 3)
-grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=90*s,h=3050,c=22*s)
+grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 1000, dec = 3)
+grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=90*s,h=3200,c=22*s)
 grid.initialize_grid()
 grid.set_grid(0,init_grid)
 grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=80*s,h=3000,c=20*s)
@@ -553,10 +535,10 @@ print("Time to construct grid: ", (t2 - t1))
 instance = Modelling(init_grid = grid, d = topography) # need to give the grid here like (grid)
 
 # find minimum stability conditions
-print(instance.min_stability(3000/size_y, math.sqrt(9.81 * 5000)))
+print(instance.min_stability(1000, math.sqrt(9.81 * 5000)))
 
 # set the parameters
-instance.set_param(h = 0.1, dt = 0.0003) # can add c = ?, h = ?, dt = ?
+instance.set_param(h = 0.1, dt = 0.0003193)#2754) # can add c = ?, h = ?, dt = ?
 
 t3 = time.time()
 print("Time to set up Modelling class: ", (t3 - t2))
