@@ -190,7 +190,7 @@ class Grid:
     # v_min: the minimum value being input into the wave (float)
     # add: (boolean) whether the wave is replacing the current values
     #      or being added to them
-    def set_wave(self, grid_num, c_i, c_j, R, h, c=1, add = False):
+    def set_wave(self, grid_num, c_i, c_j, R, h, c=1, w=3, add = False):
         c = float(c)/6.283
         if c_i > self.n or c_j > self.m:
             print("error in provided parameters. Rectangle does not fit.")
@@ -201,7 +201,7 @@ class Grid:
                 for j in range(self.m):
                     dist = np.linalg.norm(np.subtract([i,j],[c_i,c_j]))#math.sqrt(math.pow(i - c_i, 2) + math.pow(j - c_j, 2))
                     if dist/c < R/c + (1/2) + (math.pi/2):
-                        value = self.wave_function(dist/c, R/c, h)
+                        value = self.wave_function(dist/c, R/c, h, w)
                         if not add:
                             self.grid[grid_num][i][j] = value #np.around(value, self.dec)
                         else:
@@ -225,8 +225,8 @@ class Grid:
         plt.savefig(name+".png")
         plt.clf()
     
-    def wave_function(self, x, R, h):
-        if x >= max(R - 3.5*math.pi,0) and x < R:
+    def wave_function(self, x, R, h, w):
+        if x >= max(R - (w+0.5)*math.pi,0) and x < R:
             a = x - R - (math.cos(x-R)/2)
             return math.cos(a)*(x/R)*h
         elif x >= R and x < R + (1/2):
@@ -394,13 +394,13 @@ class Polygon:
         return False
 
 class Modelling:
-    def __init__(self, init_grid=Grid(), d=Grid(), h=1, dt=1):
+    def __init__(self, grid_eta=Grid(), d=Grid(), h=1, dt=1):
         self.d = d
         self.h = h
         self.dt = dt
-        self.max = grid.get_max()
+        self.max = grid_eta.get_max()
         # add grid at time = 0
-        self.grid = grid
+        self.grid = grid_eta
     
     def next_grid(self, k):
         # need to set up boundary conditions here
@@ -410,25 +410,7 @@ class Modelling:
         for i in range(0, self.grid.n-1):
             for j in range(0, self.grid.m-1):
                 # use the "update formula"
-                #if self.d.get(0,i,j) > 3000:
                 self.get_open(k,i,j)
-                #else:
-                #    self.get_shallow(k,i,j)
-    
-    def get_shallow(self, k, i, j):
-        return 0
-    
-    def get_elmt(self, k, i, j):
-        if (i > self.grid.n):
-            return 0#self.grid.get(k,i-1,j)
-        elif (j > self.grid.m):
-            return 0#self.grid.get(k,i,j-1)
-        elif (i < 0):
-            return 0#self.grid.get(k,1,j)
-        elif (j < 0):
-            return 0#self.grid.get(k,i,1)
-        
-        return self.grid.get(k,i,j)
     
     # compute next step in i, j
     def get_open(self, k, i, j):
@@ -439,12 +421,104 @@ class Modelling:
         t3 = self.get_elmt(k,i,j+1) - 2*self.grid.get(k,i,j) + self.get_elmt(k,i,j-1)
         
         self.grid.set_v(k+1, i, j, t1 + term*t2 + term*t3)
+
+    def get_elmt(self, k, i, j):
+        if (i > self.grid.n):
+            return 0
+        elif (j > self.grid.m):
+            return 0
+        elif (i < 0):
+            return 0
+        elif (j < 0):
+            return 0
+        
+        return self.grid.get(k,i,j)
+
+    '''
+    def get_shallow(self, k, i, j):
+        result = self.get_vec(k,i,j).copy()
+        self.grid_eta.set_v(k+1,i,j, result[0])
+        self.grid_w.set_v(k+1,i,j, result[1])
+        self.grid_v.set_v(k+1,i,j, result[2])
+    '''
+
+    '''
+    def get_vec(self, k, i, j):
+        m1 = np.array([[self.alpha*self.grid_w.get(k,i,j), self.alpha*self.grid_eta.get(k,i,j)+self.d.get(0,i,j), 0],
+                       [9.81, self.alpha*self.grid_w.get(k,i,j), 0],
+                       [0, 0, self.alpha*self.grid_w.get(k,i,j)]])
+        m2 = np.array([[self.alpha*self.grid_v.get(k,i,j), 0, self.alpha*self.grid_eta.get(k,i,j)+self.d.get(0,i,j)],
+                       [0, self.alpha*self.grid_v.get(k,i,j), 0],
+                       [9.81, 0, self.alpha*self.grid_v.get(k,i,j)]])
+        m3 = np.array([[self.grid_w.get(k,i,j), self.grid_v.get(k,i,j), 0],
+                       [0, 0, 0],
+                       [0, 0, 0]])
+        
+        #if (self.d.n-1 < i+1):
+        if (0 < i):
+            ai_1 = self.grid_eta.get(k,i-1,j)
+            bi_1 = self.grid_w.get(k,i-1,j)
+            ci_1 = self.grid_v.get(k,i-1,j)
+            di_1 = self.d.get(0,i-1,j)
+        else:
+            ai_1 = 0
+            bi_1 = self.grid_w.get(k,i,j)
+            ci_1 = self.grid_v.get(k,i,j)
+            di_1 = 5000
+        
+        #if (self.d.m-1 < j+1):
+        if (0 < j):
+            aj_1 = self.grid_eta.get(k,i,j-1)
+            bj_1 = self.grid_w.get(k,i,j-1)
+            cj_1 = self.grid_v.get(k,i,j-1)
+            dj_1 = self.d.get(0,i,j-1)
+        else:
+            aj_1 = 0
+            bj_1 = self.grid_w.get(k,i,j)
+            cj_1 = self.grid_v.get(k,i,j)
+            dj_1 = 5000
+       
+        if (self.d.n-1 < i+1):
+            ai_2 = self.grid_eta.get(k,i+1,j)
+            bi_2 = self.grid_w.get(k,i+1,j)
+            ci_2 = self.grid_v.get(k,i+1,j)
+            di_2 = self.d.get(0,i+1,j)
+        else:
+            ai_2 = 0
+            bi_2 = self.grid_w.get(k,i,j)
+            ci_2 = self.grid_v.get(k,i,j)
+            di_2 = 5000
+        
+        if (self.d.m-1 < j+1):
+            aj_2 = self.grid_eta.get(k,i,j+1)
+            bj_2 = self.grid_w.get(k,i,j+1)
+            cj_2 = self.grid_v.get(k,i,j+1)
+            dj_2 = self.d.get(0,i,j+1)
+        else:
+            aj_2 = 0
+            bj_2 = self.grid_w.get(k,i,j)
+            cj_2 = self.grid_v.get(k,i,j)
+            dj_2 = 5000
+        
+        v1 = np.array([ai_2 - ai_1,#ai - self.grid_eta.get(k,i,j),
+                       bi_2 - bi_1,#bi - self.grid_w.get(k,i,j),
+                       ci_2 - ci_1])#ci - self.grid_v.get(k,i,j)])
+        v2 = np.array([aj_2 - aj_1,#aj - self.grid_eta.get(k,i,j),
+                       bj_2 - bj_1,#bj - self.grid_w.get(k,i,j),
+                       cj_2 - cj_1])#cj - self.grid_v.get(k,i,j)])
+        v3 = np.array([di_2 - di_1,#di - self.d.get(0,i,j),
+                       dj_2 - dj_1,#dj - self.d.get(0,i,j),
+                       0])
+        v = np.array([self.grid_eta.get(k-1,i,j), self.grid_w.get(k-1,i,j), self.grid_v.get(k-1,i,j)])
+
+        return np.subtract(v, (self.dt / self.h) * (np.add(np.add(m1 @ v1, m2 @ v2), m3 @ v3)))
+    '''
     
     def solveEq(self):
         # for loop for time steps and updating grid
         # self.grid_eta.initialize_grid()
 
-        for k in range (1, self.max-1): # some stopping condition
+        for k in range(1, self.max-1): # some stopping condition
             # use next_grid to compute next step
             self.next_grid(k)
         #print("hello123")
@@ -457,14 +531,10 @@ class Modelling:
             self.h = h
         if not dt == 0:
             self.dt = dt
-    
-    def check_stability(self): # add given parameters
-        # check whether problem is stable with given parameters
-        1+1
 
-    def min_stability(self, h, c):
-        # find minimal stable parameters, whatever that may mean
-        return h / (c*math.sqrt(2))
+def min_stability(h, c):
+    # find minimal stable parameters, whatever that may mean
+    return h / (c*math.sqrt(2))
 
 # creates the Palma islands topography
 def palmaTopography(size_x, size_y, s):
@@ -475,8 +545,8 @@ def palmaTopography(size_x, size_y, s):
     topography.set_rect_inc_dec(0,[[40*s,110*s],[75*s,135*s],[160*s,135*s],[160*s,0],[100*s,0]],3,v_max=1000,v_min=50)
     topography.set_rect_inc_dec(0,[[40*s,110*s],[0,110*s],[0,0],[40*s,0]],2,v_max=1000,v_min=50)
     topography.set_rect(0,[[0,110*s],[75*s,135*s],[40*s,110*s]],1000)
-    topography.set_rect_inc_dec(0,[[0,110*s],[75*s,135*s],[80*s,140*s],[80*s,250*s],
-                                [0,250*s]],0,v_max=5000,v_min=1000)
+    topography.set_rect_inc_dec(0,[[0,110*s],[75*s,135*s],[80*s,140*s],[80*s,170*s],
+                                [0,170*s]],0,v_max=5000,v_min=1000)
     
     # Creates a polygon with 8 corners and a 70*s unit long shore (uniform decrease from 0 to 5000 depth)
     # Represents Spain / Portugal
@@ -510,6 +580,64 @@ def otherTopography(size_x, size_y, s):
     
     return topography
 
+def get_amplitude(size_x, size_y, s, t, h, r, c, w):
+    init_grid = np.array([np.full((size_x,size_y),0)])
+    grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = t, dec = 3)
+
+    grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=r*s,h=h*1.2,c=c*s,w=w)
+    grid.set_rect(grid_num=0,c=[[160*s-1,0],[160*s-1,600*s],[160*s,600*s],[160*s,0]],value=0)
+    grid.set_rect(grid_num=0,c=[[160*s-1,600*s-1],[0,600*s-1],[0,600*s],[160*s-1,600*s]],value=0)
+
+    grid.initialize_grid()
+    grid.set_grid(0,init_grid)
+
+    grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=r*s*0.99,h=h,c=(c-1)*s,w=w)
+    grid.set_rect(grid_num=0,c=[[160*s-1,0],[160*s-1,600*s],[160*s,600*s],[160*s,0]],value=0)
+    grid.set_rect(grid_num=0,c=[[160*s-1,600*s-1],[0,600*s-1],[0,600*s],[160*s-1,600*s]],value=0)
+
+    return grid
+
+'''
+def get_velocity(size_x, size_y, s, topo, amp, v, t):
+    init_grid = np.array([np.full((size_x,size_y),0)])
+    grid_v = Grid(grid = init_grid, n = size_x, m = size_y, max_time = t, dec = 1)
+    grid_w = Grid(grid = init_grid, n = size_x, m = size_y, max_time = t, dec = 1)
+
+    for i in range(topo.n):
+        for j in range(topo.m):
+            #if not topo.get(0,i,j) == 0:
+                #grid_w.set_v(0,i,j,200)
+                #grid_v.set_v(0,i,j,200)
+            
+            if not amp.get(1,i,j) == 0 and (not topo.get(0,i,j) == 0):
+                w = np.subtract(v, [i,j])
+                x, y = get_dir(w)
+                grid_v.set_v(0,i,j,amp.get(0,i,j)*x*math.sqrt(9.81/topo.get(0,i,j)))
+                grid_w.set_v(0,i,j,amp.get(0,i,j)*y*math.sqrt(9.81/topo.get(0,i,j)))
+
+    grid_v.initialize_grid()
+    grid_w.initialize_grid()
+
+    for i in range(topo.n):
+        for j in range(topo.m):
+            #if not topo.get(0,i,j) == 0:
+                #grid_w.set_v(0,i,j,200)
+                #grid_v.set_v(0,i,j,200)
+            
+            if not amp.get(0,i,j) == 0 and (not topo.get(0,i,j) == 0):
+                w = np.subtract(v, [i,j])
+                x, y = get_dir(w)
+                grid_v.set_v(0,i,j,amp.get(0,i,j)*x*math.sqrt(9.81/topo.get(0,i,j)))
+                grid_w.set_v(0,i,j,amp.get(0,i,j)*y*math.sqrt(9.81/topo.get(0,i,j)))
+    
+    return grid_v, grid_w
+'''
+
+'''
+def get_dir(v):
+    v = v/np.linalg.norm(v)
+    return v[0], v[1]
+'''
 
 # create grid
 # parameters
@@ -518,70 +646,132 @@ def otherTopography(size_x, size_y, s):
 #   m: y dimension of grid
 #   max_time: time up to which we are considering the model
 #   dec: number of decimals after the point
-s = 0.5
+s = float(input("Enter the scale you want: "))
+print()
+print("s is now given by: ", s)
+print("s is of type: ", type(s))
+
+t = int(input("Enter the number of timesteps: "))
+print()
+print("t is now given by: ", t)
+print("t is of type: ", type(t))
+
+h = float(input("Enter the initial amplitude: "))
+print()
+print("h is now given by: ", h)
+print("h is of type: ", type(h))
+
+name = input("Enter a name: ")
+print()
+print("name is now given by: ", name)
+print("name is of type: ", type(name))
+
+# find minimum stability conditions
+print("Given the parameters, the minimum delta t is: ", min_stability(10/(s*2), math.sqrt(9.81 * 5000)))
+
+delta = float(input("Enter the timestep size: "))
+print()
+print("delta is now given by: ", delta)
+print("delta is of type: ", type(delta))
+
+radius = int(input("Enter the radius: "))
+print()
+print("radius is now given by: ", radius)
+print("radius is of type: ", type(radius))
+
+wavelen = int(input("Enter the wavelength: "))
+print()
+print("wavelen is now given by: ", wavelen)
+print("wavelen is of type: ", type(wavelen))
+
+waves = int(input("Enter the number of waves: "))
+print()
+print("waves is now given by: ", waves)
+print("waves is of type: ", type(waves))
+
+'''
+alpha = float(input("Enter the value or alpha: "))
+print()
+print("alpha is now given by: ", alpha)
+print("alpha is of type: ", type(alpha))
+'''
 
 size_x = int(160*s)
 size_y = int(600*s)
 t0 = time.time()
 
 topography = palmaTopography(size_x, size_y, s)
-topography.plot_grid(0,"topography",center=3000,vmax=3000)
+topography.plot_grid(0,"topography",center=2000,vmax=2000)
 t1 = time.time()
 print("Made topography in: ", (t1 - t0))
 
-init_grid = np.array([np.full((size_x,size_y),0)])
-grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = 200, dec = 3)
-grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=90*s,h=93,c=22*s)
-grid.set_rect(grid_num=0,c=[[160*s-1,0],[160*s-1,600*s],[160*s,600*s],[160*s,0]],value=0)
-grid.set_rect(grid_num=0,c=[[160*s-1,600*s-1],[0,600*s-1],[0,600*s],[160*s-1,600*s]],value=0)
-grid.initialize_grid()
-grid.set_grid(0,init_grid)
-grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=89*s,h=99,c=20*s)
-grid.set_rect(grid_num=0,c=[[160*s-1,0],[160*s-1,600*s],[160*s,600*s],[160*s,0]],value=0)
-grid.set_rect(grid_num=0,c=[[160*s-1,600*s-1],[0,600*s-1],[0,600*s],[160*s-1,600*s]],value=0)
-grid.plot_grid(0,"initial_wave",vmin=-50,vmax=50,center=0)
-grid.plot_grid(1,"second_wave", vmin=-50,vmax=50,center=0)
+grid_eta = get_amplitude(size_x, size_y, s, t, h, radius, wavelen, waves)
+grid_eta.plot_grid(0,"initial_wave "+name,vmin=-h*0.5,vmax=h*0.5,center=0)
+grid_eta.plot_grid(1,"second_wave "+name, vmin=-h*0.5,vmax=h*0.5,center=0)
 t2 = time.time()
 print("Time to construct grid: ", (t2 - t1))
-#exit()
+
+'''
+grid_v, grid_w = get_velocity(size_x, size_y, s, topography, grid_eta, [160*s, 600*s], t)
+grid_v.plot_grid(0, "initial x speed "+name,vmin=-h*0.1,vmax=h*0.1,center=0)
+grid_w.plot_grid(0, "initial y speed "+name,vmin=-h*0.1,vmax=h*0.1,center=0)
+t3 = time.time()
+print("Time to construct velocity: ", (t3 - t2))
+'''
 
 # create instance of modelling class
-instance = Modelling(init_grid = grid, d = topography) # need to give the grid here like (grid)
-
-# find minimum stability conditions
-print(instance.min_stability(10/(s*2), math.sqrt(9.81 * 5000)))
+instance = Modelling(grid_eta=grid_eta, d=topography)#grid_w=grid_w, grid_v=grid_v, d=topography, alpha=alpha) # need to give the grid here like (grid)
 
 # set the parameters
-instance.set_param(h = 10/(s*2), dt = 0.03)#54) # can add c = ?, h = ?, dt = ?
+instance.set_param(h = 10/(s*2), dt = delta)#54) # can add c = ?, h = ?, dt = ?
 
-t3 = time.time()
-print("Time to set up Modelling class: ", (t3 - t2))
+t4 = time.time()
+print("Time to set up Modelling class: ", (t4 - t2))
 # solve the wave equations numerically
 instance.solveEq() # should take as parameter max time
 
-t4 = time.time()
-print("Time for solveEq(): ", (t4 - t3))
+t5 = time.time()
+print("Time for solveEq(): ", (t5 - t4))
 
 #instance.plot_result("test_set", vmax=200, vmin=-200, step = 1, time = 200)
-grid = instance.grid.grid
-fig = plt.figure()
-
 def animate(i):
     plt.clf()
-    ax = sns.heatmap(grid[i], vmin = -50, vmax = 50, center = 0,
+    ax = sns.heatmap(grid[i], vmin = -h*0.5, vmax = h*0.5, center = 0,
                          square = True, xticklabels = False, yticklabels = False,
                          cbar = False)
 
-anim = animation.FuncAnimation(fig, animate, interval = 20, frames = 200)
+def save_animation(grid, fig, name):
+    anim = animation.FuncAnimation(fig, animate, interval = 20, frames = t)
 
-Writer = writers['ffmpeg']
-writer = Writer(fps=50, metadata={'artist': 'Me'}, bitrate=1000)
+    Writer = writers['ffmpeg']
+    writer = Writer(fps=50, metadata={'artist': 'Me'}, bitrate=1000)
 
-anim.save('Tsunami simulation.mp4', writer)
+    anim.save('Tsunami simulation '+name+'.mp4', writer)
 
-t5 = time.time()
-print("Time to make plots: ", (t5 - t4))
-print("Total time is: ", (t5 - t0))
+grid = instance.grid.grid
+fig = plt.figure()
+save_animation(grid, fig, ""+name)
+t6 = time.time()
+print("Time to make amplitude video: ", (t6 - t5))
 
+'''
+grid = instance.grid_w.grid
+fig = plt.figure()
+save_animation(grid, fig, "w "+name)
+t7 = time.time()
+print("Time to make x velocity video: ", (t7 - t6))
+
+grid = instance.grid_v.grid
+fig = plt.figure()
+save_animation(grid, fig, "v "+name)
+t8 = time.time()
+print("Time to make y velocity video: ", (t8 - t7))
+'''
+
+#instance.grid_v.plot_grid(100, "test_v")
+#instance.grid_w.plot_grid(100, "test_w")
+
+print("Total time is: ", (t6 - t0))
 
 #print(instance.grid.what_is_max())
+
