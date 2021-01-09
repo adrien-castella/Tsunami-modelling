@@ -394,23 +394,62 @@ class Polygon:
         return False
 
 class Modelling:
-    def __init__(self, grid_eta=Grid(), d=Grid(), h=1, dt=1):
+    def __init__(self, grid_eta=Grid(), d=Grid(), poly=Polygon(), h=1, dt=1):#grid_w = Grid(), grid_v = Grid(), alpha = 1):
         self.d = d
         self.h = h
         self.dt = dt
         self.max = grid_eta.get_max()
+        self.poly = poly
+        self.matrix = self.setup()
         # add grid at time = 0
         self.grid = grid_eta
+        #self.grid_w = grid_w
+        #self.grid_v = grid_v
+        #self.alpha = alpha
+        self.wasted = 0
+        self.count = 0
+
+    def setup(self):
+        c_1 = poly.corners[0]
+        c_2 = poly.corners[1]
+        c_3 = poly.corners[2]
+        size_x = int(np.linalg.norm(np.subtract(c_1, c_2))) + 1
+        size_y = int(np.linalg.norm(np.subtract(c_2, c_3))) + 1
+        return np.zeros((size_y,size_x))
     
     def next_grid(self, k):
         # need to set up boundary conditions here
         if ((k+2)%50 == 0):
             print("Starting grid: ", k+2)
+            if np.amax(self.matrix) > 0:
+                ax = sns.heatmap(self.matrix)
+                plt.savefig("matrix_"+str(k))
+                plt.clf()
         
+        mat = np.zeros(self.matrix.shape)
         for i in range(0, self.grid.n-1):
             for j in range(0, self.grid.m-1):
                 # use the "update formula"
                 self.get_open(k,i,j)
+                t_init = time.time()
+                if (i <= 80*s and j <= 142*s and self.grid.get(k+1,i,j) > 0 and poly.contains(i,j)):
+                    c_1 = poly.corners[0]
+                    c_2 = poly.corners[1]
+                    c_3 = poly.corners[2]
+                    l = int(poly.distance_to(c_1, c_2, [i,j]))
+                    m = int(poly.distance_to(c_2, c_3, [i,j]))
+                    mat[l][m] = self.grid.get(k+1,i,j)
+                    self.matrix[l][m] = max(mat[l][m], self.matrix[l][m])
+                self.wasted = self.wasted - t_init + time.time()
+
+        if self.count < 5 and (np.amax(mat) > 0):
+            self.count = self.count + 1
+            ax = sns.heatmap(self.matrix)
+            plt.savefig("matrix_num_"+str(self.count))
+            plt.clf()
+            ax = sns.heatmap(mat)
+            plt.savefig("mat_num_"+str(self.count))
+            plt.clf()
     
     # compute next step in i, j
     def get_open(self, k, i, j):
@@ -522,6 +561,8 @@ class Modelling:
             # use next_grid to compute next step
             self.next_grid(k)
         #print("hello123")
+        print(self.matrix)
+        print("Time wasted: ", self.wasted)
     
     # set the initial parameters
     def set_param(self, c = 0, h = 0, dt = 0):
@@ -571,8 +612,10 @@ def palmaTopography(size_x, size_y, s):
     # uniform values in a cirlce for the Palma and other islands, inputs are straightforward
     topography.set_circ_unif(0,160*s,600*s,36*s,5000,0,c_min=4*s)
     topography.set_circ_unif(0,0,580*s,50*s,5000,200,c_min=8*s)
+
+    poly = Polygon([[45*s,103*s],[35*s,117*s],[70*s,142*s],[80*s,128*s]])
     
-    return topography
+    return poly, topography
 
 def otherTopography(size_x, size_y, s):
     init_topo = np.array([np.full((size_x, size_y), 5000)])
@@ -700,8 +743,8 @@ size_x = int(160*s)
 size_y = int(600*s)
 t0 = time.time()
 
-topography = palmaTopography(size_x, size_y, s)
-topography.plot_grid(0,"topography",center=2000,vmax=2000)
+poly, topography = palmaTopography(size_x, size_y, s)
+topography.plot_grid(0,"topography",center=3000,vmax=3000)
 t1 = time.time()
 print("Made topography in: ", (t1 - t0))
 
@@ -720,7 +763,7 @@ print("Time to construct velocity: ", (t3 - t2))
 '''
 
 # create instance of modelling class
-instance = Modelling(grid_eta=grid_eta, d=topography)#grid_w=grid_w, grid_v=grid_v, d=topography, alpha=alpha) # need to give the grid here like (grid)
+instance = Modelling(grid_eta=grid_eta, d=topography, poly = poly)#grid_w=grid_w, grid_v=grid_v, alpha = alpha) # need to give the grid here like (grid)
 
 # set the parameters
 instance.set_param(h = 10/(s*2), dt = delta)#54) # can add c = ?, h = ?, dt = ?
