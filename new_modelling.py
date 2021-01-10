@@ -453,13 +453,10 @@ class Modelling:
                 #print("k value is: ",k)
                 #print(mat)
                 self.count = self.count + 1
-                ax = sns.heatmap(self.matrix)
-                plt.savefig(name+"_matrix_"+str(self.count)+"_"+str(k))
-                plt.clf()
                 ax = sns.heatmap(mat)
-                plt.savefig(name+"_mat_"+str(self.count)+"_"+str(k))
+                plt.savefig(name+"_mat_"+str(self.count))
                 plt.clf()
-            self.save_to_json(mat, k)
+            self.save_to_json(mat, k, np.unravel_index(np.argmax(mat),mat.shape))
     
     # compute next step in i, j
     def get_open(self, k, i, j):
@@ -489,19 +486,23 @@ class Modelling:
         if j < 0:
             tt = self.get_tt(k,i,j+1)
             xx = self.get_xx(k,i,j+1)
-            return tt - xx + 2*self.grid.get(k,i,j+1) - self.grid.get(k,i,j+2)
+            ht = pow(self.h, 2)
+            return tt*ht - xx + 2*self.grid.get(k,i,j+1) - self.grid.get(k,i,j+2)
         elif i < 0:
             tt = self.get_tt(k,i+1,j)
             yy = self.get_yy(k,i+1,j)
-            return tt - yy + 2*self.grid.get(k,i+1,j) - self.grid.get(k,i+2,j)
+            ht = pow(self.h, 2)
+            return tt*ht - yy + 2*self.grid.get(k,i+1,j) - self.grid.get(k,i+2,j)
         elif j > self.grid.m-1:
             tt = self.get_tt(k,i,j-1)
             xx = self.get_xx(k,i,j-1)
-            return tt - xx + 2*self.grid.get(k,i,j-1) - self.grid.get(k,i,j-2)
+            ht = pow(self.h, 2)
+            return tt*ht - xx + 2*self.grid.get(k,i,j-1) - self.grid.get(k,i,j-2)
         elif i > self.grid.n-1:
             tt = self.get_tt(k,i-1,j)
             yy = self.get_yy(k,i-1,j)
-            return tt - yy + 2*self.grid.get(k,i-1,j) - self.grid.get(k,i-2,j)
+            ht = pow(self.h, 2)
+            return tt*ht - yy + 2*self.grid.get(k,i-1,j) - self.grid.get(k,i-2,j)
         
         return self.grid.get(k,i,j)
     
@@ -605,13 +606,15 @@ class Modelling:
         return np.subtract(v, (self.dt / self.h) * (np.add(np.add(m1 @ v1, m2 @ v2), m3 @ v3)))
     '''
 
-    def save_to_json(self, m, k=0):
+    def save_to_json(self, m, k=0, ind = (0, 0)):
         data = list(m)
         for i in range(len(m)):
             data[i] = list(m[i])
         
         with open(name+"_data_viz.json", "a") as write_file:
-            json.dump("k: "+str(k), write_file, indent=2)
+            json.dump("k: "+str(k), write_file)
+            write_file.write('\n')
+            json.dump("i,j: "+str(ind[0])+", "+str(ind[1]), write_file)
             write_file.write('\n')
             for i in data:
                 json.dump(i, write_file)
@@ -659,6 +662,11 @@ class Modelling:
         #print("hello123")
         print(self.matrix)
         self.save_to_json(self.matrix, self.max-1)
+
+        ax = sns.heatmap(self.matrix)
+        plt.savefig(name+"_matrix")
+        plt.clf()
+
         print("Time wasted: ", self.wasted)
     
     # set the initial parameters
@@ -809,7 +817,7 @@ print("name is now given by: ", name)
 print("name is of type: ", type(name))
 
 # find minimum stability conditions
-print("Given the parameters, the minimum delta t is: ", min_stability(10/(s*2), math.sqrt(9.81 * 5000)))
+print("Given the parameters, the maximum delta t is: ", min_stability(10/(s*2), math.sqrt(9.81 * 5000)))
 
 delta = float(input("Enter the timestep size: "))
 print()
@@ -884,10 +892,10 @@ def animate(i):
                          cbar = False)
 
 def save_animation(grid, fig, name):
-    anim = animation.FuncAnimation(fig, animate, interval = 20, frames = t)
+    anim = animation.FuncAnimation(fig, animate, interval = int(600*delta), frames = t)
 
     Writer = writers['ffmpeg']
-    writer = Writer(fps=50, metadata={'artist': 'Me'}, bitrate=1000)
+    writer = Writer(fps=int(1.6/delta), metadata={'artist': 'Me'}, bitrate=1000)
 
     anim.save('Tsunami simulation '+name+'.mp4', writer)
 
