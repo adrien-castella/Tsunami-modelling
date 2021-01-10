@@ -43,7 +43,7 @@ class Grid:
         return self.grid[k][i][j].copy()
     
     def set_v(self, k, i, j, v):
-        self.grid[k][i][j] = v #np.around(v,self.dec)
+        self.grid[k][i][j] = np.around(v,self.dec)
     
     def set_grid(self, i, new_grid):
         self.grid[i] = np.around(new_grid,self.dec)
@@ -424,12 +424,12 @@ class Modelling:
             print("Starting grid: ", k+2)
             if np.amax(self.matrix) > 0:
                 ax = sns.heatmap(self.matrix)
-                plt.savefig("matrix_"+str(k+2))
+                plt.savefig("matrix_"+name+"_"+str(k+2))
                 plt.clf()
         
         mat = np.zeros(self.matrix.shape)
-        for i in range(0, self.grid.n-1):
-            for j in range(0, self.grid.m-1):
+        for i in range(0, self.grid.n):
+            for j in range(0, self.grid.m):
                 # use the "update formula"
                 self.get_open(k,i,j)
                 t_init = time.time()
@@ -444,21 +444,20 @@ class Modelling:
                 
                 self.wasted = self.wasted - t_init + time.time()
 
-        if self.count < 5 and np.amax(mat) > 0 and (self.count == 0 or (self.count > 0 and k%5 == 0)):
-            print("max is: ",np.amax(mat))
-            print("count is: ",self.count)
-            print("k value is: ",k)
-            print(mat)
-            self.count = self.count + 1
-            ax = sns.heatmap(self.matrix)
-            plt.savefig(name+"_matrix_"+str(self.count)+"_"+str(k))
-            plt.clf()
-            ax = sns.heatmap(mat)
-            plt.savefig(name+"_mat_"+str(self.count)+"_"+str(k))
-            plt.clf()
-        
-        if self.count > 0:
-            self.save_to_json(mat)
+        if np.amax(mat) > 0 and (self.count == 0 or (self.count > 0 and k%5 == 0)):
+            if self.count < 8:
+                #print("max is: ",np.amax(mat))
+                #print("count is: ",self.count)
+                #print("k value is: ",k)
+                #print(mat)
+                self.count = self.count + 1
+                ax = sns.heatmap(self.matrix)
+                plt.savefig(name+"_matrix_"+str(self.count)+"_"+str(k))
+                plt.clf()
+                ax = sns.heatmap(mat)
+                plt.savefig(name+"_mat_"+str(self.count)+"_"+str(k))
+                plt.clf()
+            self.save_to_json(mat, k)
     
     # compute next step in i, j
     def get_open(self, k, i, j):
@@ -469,18 +468,60 @@ class Modelling:
         t3 = self.get_elmt(k,i,j+1) - 2*self.grid.get(k,i,j) + self.get_elmt(k,i,j-1)
         
         self.grid.set_v(k+1, i, j, t1 + term*t2 + term*t3)
-
+    
+    #'''
     def get_elmt(self, k, i, j):
-        if (i > self.grid.n):
-            return 0
-        elif (j > self.grid.m):
-            return 0
+        if (i > self.grid.n-1):
+            return 0#self.grid.get(k,i-1,j)
+        elif (j > self.grid.m-1):
+            return 0#self.grid.get(k,i,j-1)
         elif (i < 0):
-            return 0
+            return 0#self.grid.get(k,i+1,j)
         elif (j < 0):
-            return 0
+            return 0#self.grid.get(k,i,j+1)
+        return self.grid.get(k,i,j)
+    #'''
+
+    '''
+    def get_elmt(self, k, i, j):
+        if j < 0:
+            tt = self.get_tt(k,i,j+1)
+            xx = self.get_xx(k,i,j+1)
+            return tt - xx + 2*self.grid.get(k,i,j+1) - self.grid.get(k,i,j+2)
+        elif i < 0:
+            tt = self.get_tt(k,i+1,j)
+            yy = self.get_yy(k,i+1,j)
+            return tt - yy + 2*self.grid.get(k,i+1,j) - self.grid.get(k,i+2,j)
+        elif j > self.grid.m-1:
+            tt = self.get_tt(k,i,j-1)
+            xx = self.get_xx(k,i,j-1)
+            return tt - xx + 2*self.grid.get(k,i,j-1) - self.grid.get(k,i,j-2)
+        elif i > self.grid.n-1:
+            tt = self.get_tt(k,i-1,j)
+            yy = self.get_yy(k,i-1,j)
+            return tt - yy + 2*self.grid.get(k,i-1,j) - self.grid.get(k,i-2,j)
         
         return self.grid.get(k,i,j)
+    
+    def get_tt(self, k, i, j):
+        return (self.grid.get(k,i,j) - 2*self.grid.get(k-1,i,j) + self.grid.get(k-2,i,j)) / pow(self.dt, 2)
+    
+    def get_xx(self, k, i, j):
+        if 0 < i and i < self.grid.n-1:
+            return (self.grid.get(k,i+1,j) - 2*self.grid.get(k,i,j) + self.grid.get(k,i-1,j))
+        elif i == 0:
+            return (self.grid.get(k,i+2,j) - 2*self.grid.get(k,i+1,j) + self.grid.get(k,i,j))
+        else:
+            return (self.grid.get(k,i,j) - 2*self.grid.get(k,i-1,j) + self.grid.get(k,i-2,j))
+
+    def get_yy(self, k, i, j):
+        if 0 < j and j < self.grid.m-1:
+            return (self.grid.get(k,i,j+1) - 2*self.grid.get(k,i,j) + self.grid.get(k,i,j-1))
+        elif j == 0:
+            return (self.grid.get(k,i,j+2) - 2*self.grid.get(k,i,j+1) + self.grid.get(k,i,j))
+        else:
+            return (self.grid.get(k,i,j) - 2*self.grid.get(k,i,j-1) + self.grid.get(k,i,j-2))
+    '''
 
     '''
     def get_shallow(self, k, i, j):
@@ -562,14 +603,26 @@ class Modelling:
         return np.subtract(v, (self.dt / self.h) * (np.add(np.add(m1 @ v1, m2 @ v2), m3 @ v3)))
     '''
 
-    def save_to_json(self, m):
+    def save_to_json(self, m, k=0):
         data = list(m)
         for i in range(len(m)):
             data[i] = list(m[i])
         
-        with open(name+"_data.json", "a") as write_file:
-            json.dump(data, write_file, indent=2)
+        with open(name+"_data_viz.json", "a") as write_file:
+            json.dump("k: "+str(k), write_file, indent=2)
             write_file.write('\n')
+            for i in data:
+                json.dump(i, write_file)
+                write_file.write('\n')
+            write_file.write('\n')
+        
+        with open(name+"_data_py.json", "r") as read_file:
+            a = json.load(read_file)
+            a.append(data)
+            data = a
+        
+        with open(name+"_data_py.json", "w") as write_file:
+            json.dump(data, write_file)
     
     def init_json(self):
         a = {
@@ -581,10 +634,18 @@ class Modelling:
             "wavelen": wavelen,
             "waves": waves
         }
-        with open(name+"_data.json", "w") as write_file:
+        with open(name+"_data_viz.json", "w") as write_file:
             json.dump(a,write_file,indent=2)
             write_file.write('\n')
+            write_file.write('\n')
     
+        data = list(self.matrix)
+        for i in range(len(data)):
+            data[i] = list(data[i])
+        
+        with open(name+"_data_py.json", "w") as write_file:
+            json.dump(list([data]), write_file)
+
     def solveEq(self):
         # for loop for time steps and updating grid
         # self.grid_eta.initialize_grid()
@@ -595,7 +656,7 @@ class Modelling:
             self.next_grid(k)
         #print("hello123")
         print(self.matrix)
-        save_to_json(self.matrix)
+        self.save_to_json(self.matrix, self.max-1)
         print("Time wasted: ", self.wasted)
     
     # set the initial parameters
@@ -613,15 +674,15 @@ def min_stability(h, c):
 
 # creates the Palma islands topography
 def palmaTopography(size_x, size_y, s):
-    init_topo = np.array([np.full((size_x,size_y),10000)])
+    init_topo = np.array([np.full((size_x,size_y),5000)])
     topography = Grid(grid = init_topo, n = size_x, m = size_y, max_time = 1, dec = 0)
 
     # decreasing polygons for the narrow channel
-    topography.set_rect_inc_dec(0,[[40*s,110*s],[75*s,135*s],[160*s,135*s],[160*s,0],[100*s,0]],3,v_max=2000,v_min=50)
-    topography.set_rect_inc_dec(0,[[40*s,110*s],[0,110*s],[0,0],[40*s,0]],2,v_max=2000,v_min=50)
-    topography.set_rect(0,[[0,110*s],[75*s,135*s],[40*s,110*s]],2000)
+    topography.set_rect_inc_dec(0,[[40*s,110*s],[75*s,135*s],[160*s,135*s],[160*s,0],[100*s,0]],3,v_max=1000,v_min=50)
+    topography.set_rect_inc_dec(0,[[40*s,110*s],[0,110*s],[0,0],[40*s,0]],2,v_max=1000,v_min=50)
+    topography.set_rect(0,[[0,110*s],[75*s,135*s],[40*s,110*s]],1000)
     topography.set_rect_inc_dec(0,[[0,110*s],[75*s,135*s],[80*s,140*s],[80*s,170*s],
-                                [0,170*s]],0,v_max=10000,v_min=2000)
+                                [0,170*s]],0,v_max=5000,v_min=1000)
     
     # Creates a polygon with 8 corners and a 70*s unit long shore (uniform decrease from 0 to 5000 depth)
     # Represents Spain / Portugal
@@ -644,8 +705,8 @@ def palmaTopography(size_x, size_y, s):
                         [100*s,30*s],[100*s,0],[0,0]], 0,10*s)
 
     # uniform values in a cirlce for the Palma and other islands, inputs are straightforward
-    topography.set_circ_unif(0,160*s,600*s,36*s,10000,0,c_min=4*s)
-    topography.set_circ_unif(0,0,580*s,50*s,10000,200,c_min=8*s)
+    topography.set_circ_unif(0,160*s,600*s,36*s,5000,0,c_min=4*s)
+    topography.set_circ_unif(0,0,580*s,50*s,5000,200,c_min=8*s)
 
     poly = Polygon([[45*s,103*s],[35*s,117*s],[70*s,142*s],[80*s,128*s]])
     
@@ -662,15 +723,17 @@ def get_amplitude(size_x, size_y, s, t, h, r, c, w):
     grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = t, dec = 3)
 
     grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=r*s,h=h*1.2,c=c*s,w=w)
-    grid.set_rect(grid_num=0,c=[[160*s-1,0],[160*s-1,600*s],[160*s,600*s],[160*s,0]],value=0)
-    grid.set_rect(grid_num=0,c=[[160*s-1,600*s-1],[0,600*s-1],[0,600*s],[160*s-1,600*s]],value=0)
+    #grid.set_rect(grid_num=0,c=[[160*s-1,0],[160*s-1,600*s],[160*s,600*s],[160*s,0]],value=0)
+    #grid.set_rect(grid_num=0,c=[[160*s-1,600*s-1],[0,600*s-1],[0,600*s],[160*s-1,600*s]],value=0)
 
     grid.initialize_grid()
     grid.set_grid(0,init_grid)
 
     grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=r*s*0.99,h=h,c=c*s,w=w)
-    grid.set_rect(grid_num=0,c=[[160*s-1,0],[160*s-1,600*s],[160*s,600*s],[160*s,0]],value=0)
-    grid.set_rect(grid_num=0,c=[[160*s-1,600*s-1],[0,600*s-1],[0,600*s],[160*s-1,600*s]],value=0)
+    #grid.set_rect(grid_num=0,c=[[160*s-1,0],[160*s-1,600*s],[160*s,600*s],[160*s,0]],value=0)
+    #grid.set_rect(grid_num=0,c=[[160*s-1,600*s-1],[0,600*s-1],[0,600*s],[160*s-1,600*s]],value=0)
+
+    #grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=r*s*0.99,h=h,c=c*s,w=w)
 
     return grid
 
@@ -785,6 +848,7 @@ print("Made topography in: ", (t1 - t0))
 grid_eta = get_amplitude(size_x, size_y, s, t, h*math.sqrt(9.81), radius, wavelen, waves)
 grid_eta.plot_grid(0,"initial_wave "+name,vmin=-h*0.5,vmax=h*0.5,center=0)
 grid_eta.plot_grid(1,"second_wave "+name, vmin=-h*0.5,vmax=h*0.5,center=0)
+#grid_eta.plot_grid(2,"third_wave "+name, vmin=-h*0.5,vmax=h*0.5,center=0)
 t2 = time.time()
 print("Time to construct grid: ", (t2 - t1))
 
