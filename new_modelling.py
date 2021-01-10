@@ -662,7 +662,6 @@ class Modelling:
             # use next_grid to compute next step
             self.next_grid(k)
         #print("hello123")
-        print(self.matrix)
         self.save_to_json(self.matrix, self.max-1)
 
         ax = sns.heatmap(self.matrix)
