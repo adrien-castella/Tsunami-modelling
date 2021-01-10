@@ -25,9 +25,11 @@ Go to code location in command prompt using "cd C:\" + PATH
 	  waves is given by (x-1)/2 where x is the number you provided.
 3. Interpreting the results:
 	- Two images of the first two frames of the wave
-	- Two JSON files
+	- Three JSON files
 		* _viz is for people to read (includes the chosen parameters)
 		* _py is for the next step
+		* _time contains the time steps at which the rectangle near
+		  the narrow channel is non-zero together with the max
 	- Topography PNG simply names "topography.png"
 	- Tsunami simulation video named "Tsunami simulation "+name+".mp4"
 4. Plotting the amplitude near the narrow channel

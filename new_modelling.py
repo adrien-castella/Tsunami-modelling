@@ -442,20 +442,11 @@ class Modelling:
                     l = int(poly.distance_to(c_1, c_2, [i,j]))
                     m = int(poly.distance_to(c_2, c_3, [i,j]))
                     mat[l][m] = self.grid.get(k+1,i,j)
-                    self.matrix[l][m] = max(mat[l][m], self.matrix[l][m])
+                    self.matrix[l][m] = max(self.matrix[l][m], mat[l][m])
                 
                 self.wasted = self.wasted - t_init + time.time()
 
-        if np.amax(mat) > 0 and (self.count == 0 or (self.count > 0 and k%5 == 0)):
-            if self.count < 4:
-                #print("max is: ",np.amax(mat))
-                #print("count is: ",self.count)
-                #print("k value is: ",k)
-                #print(mat)
-                self.count = self.count + 1
-                ax = sns.heatmap(mat)
-                plt.savefig(name+"_mat_"+str(self.count))
-                plt.clf()
+        if np.amax(mat) > 0:
             self.save_to_json(mat, k, np.unravel_index(np.argmax(mat),mat.shape))
     
     # compute next step in i, j
@@ -621,13 +612,21 @@ class Modelling:
                 write_file.write('\n')
             write_file.write('\n')
         
-        with open(name+"_data_py.json", "r") as read_file:
-            a = json.load(read_file)
-            a.append(data)
-            data = a
+        if not k == self.max-1:
+            with open(name+"_data_py.json", "r") as read_file:
+                a = json.load(read_file)
+                a.append(data)
+                data = a
+            
+            with open(name+"_data_py.json", "w") as write_file:
+                json.dump(data, write_file)
         
-        with open(name+"_data_py.json", "w") as write_file:
-            json.dump(data, write_file)
+            with open(name+"_data_time.json", "r") as read_file:
+                data = json.load(read_file)
+                data.append(list([k,np.amax(m)]))
+
+            with open(name+"_data_time.json", "w") as write_file:
+                json.dump(data, write_file, indent=2)
     
     def init_json(self):
         a = {
@@ -650,6 +649,9 @@ class Modelling:
         
         with open(name+"_data_py.json", "w") as write_file:
             json.dump(list([data]), write_file)
+
+        with open(name+"_data_time.json", "w") as write_file:
+            json.dump(list([list([0,0])]), write_file)
 
     def solveEq(self):
         # for loop for time steps and updating grid
@@ -889,7 +891,7 @@ def animate(i):
     plt.clf()
     ax = sns.heatmap(grid[i], vmin = -h*0.5, vmax = h*0.5, center = 0,
                          square = True, xticklabels = False, yticklabels = False,
-                         cbar = False)
+                         cbar = True)
 
 def save_animation(grid, fig, name):
     anim = animation.FuncAnimation(fig, animate, interval = int(600*delta), frames = t)

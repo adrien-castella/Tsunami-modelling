@@ -9,7 +9,7 @@ def animate(i):
     plt.clf()
     ax = sns.heatmap(data[i], vmin = minimum/2, vmax = maximum/2,
                          square = True, xticklabels = False, yticklabels = False,
-                         cbar = False)
+                         cbar = True)
 
 def save_animation(fig, name):
     anim = animation.FuncAnimation(fig, animate, interval = 100, frames = len(data))
