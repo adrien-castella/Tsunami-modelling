@@ -422,10 +422,12 @@ class Modelling:
         # need to set up boundary conditions here
         if ((k+2)%50 == 0):
             print("Starting grid: ", k+2)
+            '''
             if np.amax(self.matrix) > 0:
                 ax = sns.heatmap(self.matrix)
                 plt.savefig("matrix_"+name+"_"+str(k+2))
                 plt.clf()
+            '''
         
         mat = np.zeros(self.matrix.shape)
         for i in range(0, self.grid.n):
@@ -445,7 +447,7 @@ class Modelling:
                 self.wasted = self.wasted - t_init + time.time()
 
         if np.amax(mat) > 0 and (self.count == 0 or (self.count > 0 and k%5 == 0)):
-            if self.count < 8:
+            if self.count < 4:
                 #print("max is: ",np.amax(mat))
                 #print("count is: ",self.count)
                 #print("k value is: ",k)
