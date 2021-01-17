@@ -30,7 +30,7 @@ Go to code location in command prompt using "cd C:\" + PATH
 		* _py is for the next step
 		* _time contains the time steps at which the rectangle near
 		  the narrow channel is non-zero together with the max
-	- Topography PNG simply names "topography.png"
+	- Topography PNG simply named "topography.png"
 	- Tsunami simulation video named "Tsunami simulation "+name+".mp4"
 4. Plotting the amplitude near the narrow channel
 	- In the same command prompt as step 1, run the command "py plot_json.py"
