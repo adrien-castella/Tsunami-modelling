@@ -17,7 +17,7 @@ class Grid:
     # max_time: the maximum number of time steps that will be taken
     # aka, the max size of the list
     # dec: indicates the the number of decimals after the point
-    def __init__(self, grid=None, n=2, m=2, max_time=1, dec = 2):
+    def __init__(self, grid=None, n=2, m=2, max_time=1, dec = 4):
         # class structure for Grids, might be helpful
         if grid is not None:
             self.grid = np.around(grid, dec)
@@ -43,7 +43,7 @@ class Grid:
         return self.grid[k][i][j].copy()
     
     def set_v(self, k, i, j, v):
-        self.grid[k][i][j] = np.around(v,self.dec)
+        self.grid[k][i][j] = float(np.around(v,self.dec))
     
     def set_grid(self, i, new_grid):
         self.grid[i] = np.around(new_grid,self.dec)
@@ -84,7 +84,7 @@ class Grid:
                     distance = rect.distance(i, j, ignore)[0]
                     if (distance <= radius):
                         mult = distance / radius
-                        self.grid[grid_num][i][j] = mult*self.grid[grid_num][i][j] + (1 - mult)*value
+                        self.grid[grid_num][i][j] = float(np.around(mult*self.grid[grid_num][i][j] + (1 - mult)*value, self.dec))
     
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the center outwards uniformly
@@ -106,9 +106,9 @@ class Grid:
                 if (rect.contains(i,j)):
                     value  = rect.get_value(i,j)
                     if add:
-                        self.grid[grid_num][i][j] += value #np.around(value,self.dec)
+                        self.grid[grid_num][i][j] += float(np.around(value,self.dec))
                     else:
-                        self.grid[grid_num][i][j]  = value #np.around(value,self.dec)
+                        self.grid[grid_num][i][j]  = float(np.around(value,self.dec))
 
     # in a rectangular portion of the grid have a linear (in/de)crease in values
     # from the bottom-up
@@ -132,9 +132,9 @@ class Grid:
                 if (rect.contains(i,j)):
                     value  = rect.get_value(i,j)
                     if add:
-                        self.grid[grid_num][i][j] += value #np.around(value,self.dec)
+                        self.grid[grid_num][i][j] += float(np.around(value,self.dec))
                     else:
-                        self.grid[grid_num][i][j]  = value #np.around(value,self.dec)
+                        self.grid[grid_num][i][j]  = float(np.around(value,self.dec))
     
     # in a circle portion of the grid have a linear (in/de)crease in values
     # from the center outwards
@@ -175,9 +175,9 @@ class Grid:
                                 value = v_max
                             
                         if add:
-                            self.grid[grid_num][i][j] += value #np.around(value, self.dec)
+                            self.grid[grid_num][i][j] += float(np.around(value, self.dec))
                         elif radius <= radius:
-                            self.grid[grid_num][i][j] = value #np.around(value, self.dec)
+                            self.grid[grid_num][i][j] = float(np.around(value, self.dec))
     
     # add the shape of a wave into the grid. Maximal values at r_c away
     # from the center and dissipating outward from the boundary to distance
@@ -204,9 +204,9 @@ class Grid:
                     if dist/c < R/c + (1/2) + (math.pi/2):
                         value = self.wave_function(dist/c, R/c, h, w)
                         if not add:
-                            self.grid[grid_num][i][j] = value #np.around(value, self.dec)
+                            self.grid[grid_num][i][j] = float(np.around(value, self.dec))
                         else:
-                            self.grid[grid_num][i][j] += value #np.around(value, self.dec)
+                            self.grid[grid_num][i][j] += float(np.around(value, self.dec))
     
     #def set_triangle(self, grid_num, p_1, p_2, p_3, )
 
@@ -395,7 +395,7 @@ class Polygon:
         return False
 
 class Modelling:
-    def __init__(self, grid_eta=Grid(), d=Grid(), poly=Polygon(), h=1, dt=1):#, grid_w = Grid(), grid_v = Grid(), alpha = 1):
+    def __init__(self, grid_eta=Grid(), d=Grid(), poly=Polygon(), h=1, dt=1):#grid_w = Grid(), grid_v = Grid(), alpha = 1):
         self.d = d
         self.h = h
         self.dt = dt
@@ -403,7 +403,7 @@ class Modelling:
         self.poly = poly
         self.matrix = self.setup()
         # add grid at time = 0
-        self.grid_eta = grid_eta
+        self.grid = grid_eta
         #self.grid_w = grid_w
         #self.grid_v = grid_v
         #self.alpha = alpha
@@ -411,12 +411,12 @@ class Modelling:
         self.count = 0
 
     def setup(self):
-        c_1 = self.poly.corners[0]
-        c_2 = self.poly.corners[1]
-        c_3 = self.poly.corners[2]
-        s_x = int(np.linalg.norm(np.subtract(c_1, c_2))) + 1
-        s_y = int(np.linalg.norm(np.subtract(c_2, c_3))) + 1
-        return np.zeros((s_y,s_x))
+        c_1 = poly.corners[0]
+        c_2 = poly.corners[1]
+        c_3 = poly.corners[2]
+        size_x = int(np.linalg.norm(np.subtract(c_1, c_2))) + 1
+        size_y = int(np.linalg.norm(np.subtract(c_2, c_3))) + 1
+        return np.zeros((size_y,size_x))
     
     def next_grid(self, k):
         # need to set up boundary conditions here
@@ -430,18 +430,19 @@ class Modelling:
             '''
         
         mat = np.zeros(self.matrix.shape)
-        for i in range(0, self.grid_eta.n):
-            for j in range(0, self.grid_eta.m):
+        for i in range(0, self.grid.n):
+            for j in range(0, self.grid.m):
                 # use the "update formula"
                 self.get_open(k,i,j)
                 t_init = time.time()
-                if (j <= 200*s and self.grid_eta.get(k+1,i,j) > 0 and poly.contains(i,j)):
-                    c_1 = self.poly.corners[0]
-                    c_2 = self.poly.corners[1]
-                    c_3 = self.poly.corners[2]
-                    l = int(self.poly.distance_to(c_1, c_2, [i,j]))
-                    m = int(self.poly.distance_to(c_2, c_3, [i,j]))
-                    mat[l][m] = self.grid_eta.get(k+1,i,j)
+                if (i <= 80*s and j <= 142*s and self.grid.get(k+1,i,j) > 0 and poly.contains(i,j)):
+                    c_1 = poly.corners[0]
+                    c_2 = poly.corners[1]
+                    c_3 = poly.corners[2]
+                    l = int(poly.distance_to(c_1, c_2, [i,j]))
+                    m = int(poly.distance_to(c_2, c_3, [i,j]))
+                    mat[l][m] = self.grid.get(k+1,i,j)
+                    self.matrix[l][m] = max(self.matrix[l][m], mat[l][m])
                 
                 self.wasted = self.wasted - t_init + time.time()
 
@@ -452,24 +453,69 @@ class Modelling:
     def get_open(self, k, i, j):
         c = math.sqrt(9.81*self.d.get(0,i,j))
         term = pow(c * self.dt / self.h, 2)
-        t1 = 2*self.grid_eta.get(k,i,j) - self.grid_eta.get(k-1,i,j)
-        t2 = self.get_elmt(k,i+1,j) - 2*self.grid_eta.get(k,i,j) + self.get_elmt(k,i-1,j)
-        t3 = self.get_elmt(k,i,j+1) - 2*self.grid_eta.get(k,i,j) + self.get_elmt(k,i,j-1)
+        t1 = 2*self.grid.get(k,i,j) - self.grid.get(k-1,i,j)
+        t2 = self.get_elmt(k,i+1,j) - 2*self.grid.get(k,i,j) + self.get_elmt(k,i-1,j)
+        t3 = self.get_elmt(k,i,j+1) - 2*self.grid.get(k,i,j) + self.get_elmt(k,i,j-1)
         
-        self.grid_eta.set_v(k+1, i, j, t1 + term*t2 + term*t3)
+        self.grid.set_v(k+1, i, j, t1 + term*t2 + term*t3)
     
     #'''
     def get_elmt(self, k, i, j):
-        if (i > self.grid_eta.n-1):
+        if (i > self.grid.n-1):
             return 0#self.grid.get(k,i-1,j)
-        elif (j > self.grid_eta.m-1):
+        elif (j > self.grid.m-1):
             return 0#self.grid.get(k,i,j-1)
         elif (i < 0):
             return 0#self.grid.get(k,i+1,j)
         elif (j < 0):
             return 0#self.grid.get(k,i,j+1)
-        return self.grid_eta.get(k,i,j)
+        return self.grid.get(k,i,j)
     #'''
+
+    '''
+    def get_elmt(self, k, i, j):
+        if j < 0:
+            tt = self.get_tt(k,i,j+1)
+            xx = self.get_xx(k,i,j+1)
+            ht = pow(self.h, 2)
+            return tt*ht - xx + 2*self.grid.get(k,i,j+1) - self.grid.get(k,i,j+2)
+        elif i < 0:
+            tt = self.get_tt(k,i+1,j)
+            yy = self.get_yy(k,i+1,j)
+            ht = pow(self.h, 2)
+            return tt*ht - yy + 2*self.grid.get(k,i+1,j) - self.grid.get(k,i+2,j)
+        elif j > self.grid.m-1:
+            tt = self.get_tt(k,i,j-1)
+            xx = self.get_xx(k,i,j-1)
+            ht = pow(self.h, 2)
+            return tt*ht - xx + 2*self.grid.get(k,i,j-1) - self.grid.get(k,i,j-2)
+        elif i > self.grid.n-1:
+            tt = self.get_tt(k,i-1,j)
+            yy = self.get_yy(k,i-1,j)
+            ht = pow(self.h, 2)
+            return tt*ht - yy + 2*self.grid.get(k,i-1,j) - self.grid.get(k,i-2,j)
+        
+        return self.grid.get(k,i,j)
+    
+    def get_tt(self, k, i, j):
+        return (self.grid.get(k,i,j) - 2*self.grid.get(k-1,i,j) + self.grid.get(k-2,i,j)) / pow(self.dt, 2)
+    
+    def get_xx(self, k, i, j):
+        if 0 < i and i < self.grid.n-1:
+            return (self.grid.get(k,i+1,j) - 2*self.grid.get(k,i,j) + self.grid.get(k,i-1,j))
+        elif i == 0:
+            return (self.grid.get(k,i+2,j) - 2*self.grid.get(k,i+1,j) + self.grid.get(k,i,j))
+        else:
+            return (self.grid.get(k,i,j) - 2*self.grid.get(k,i-1,j) + self.grid.get(k,i-2,j))
+
+    def get_yy(self, k, i, j):
+        if 0 < j and j < self.grid.m-1:
+            return (self.grid.get(k,i,j+1) - 2*self.grid.get(k,i,j) + self.grid.get(k,i,j-1))
+        elif j == 0:
+            return (self.grid.get(k,i,j+2) - 2*self.grid.get(k,i,j+1) + self.grid.get(k,i,j))
+        else:
+            return (self.grid.get(k,i,j) - 2*self.grid.get(k,i,j-1) + self.grid.get(k,i,j-2))
+    '''
 
     '''
     def get_shallow(self, k, i, j):
@@ -477,31 +523,45 @@ class Modelling:
         self.grid_eta.set_v(k+1,i,j, result[0])
         self.grid_w.set_v(k+1,i,j, result[1])
         self.grid_v.set_v(k+1,i,j, result[2])
-    #'''
+    '''
 
     '''
     def get_vec(self, k, i, j):
-        m1 = np.array([[self.alpha*self.grid_w.get(k,i,j), self.alpha*self.grid_eta.get(k,i,j)+self.d.get(0,i,j), 0.0],
-                       [9.81, self.alpha*self.grid_w.get(k,i,j), 0.0],
-                       [0.0, 0.0, self.alpha*self.grid_w.get(k,i,j)]])
+        m1 = np.array([[self.alpha*self.grid_w.get(k,i,j), self.alpha*self.grid_eta.get(k,i,j)+self.d.get(0,i,j), 0],
+                       [9.81, self.alpha*self.grid_w.get(k,i,j), 0],
+                       [0, 0, self.alpha*self.grid_w.get(k,i,j)]])
         m2 = np.array([[self.alpha*self.grid_v.get(k,i,j), 0, self.alpha*self.grid_eta.get(k,i,j)+self.d.get(0,i,j)],
-                       [0.0, self.alpha*self.grid_v.get(k,i,j), 0.0],
-                       [9.81, 0.0, self.alpha*self.grid_v.get(k,i,j)]])
-        m3 = np.array([[self.grid_w.get(k,i,j), self.grid_v.get(k,i,j), 0.0],
-                       [0.0, 0.0, 0.0],
-                       [0.0, 0.0, 0.0]])
+                       [0, self.alpha*self.grid_v.get(k,i,j), 0],
+                       [9.81, 0, self.alpha*self.grid_v.get(k,i,j)]])
+        m3 = np.array([[self.grid_w.get(k,i,j), self.grid_v.get(k,i,j), 0],
+                       [0, 0, 0],
+                       [0, 0, 0]])
         
-        ai_1 = self.grid_eta.get(k,i,j)
-        bi_1 = self.grid_w.get(k,i,j)
-        ci_1 = self.grid_v.get(k,i,j)
-        di_1 = self.d.get(0,i,j)
+        #if (self.d.n-1 < i+1):
+        if (0 < i):
+            ai_1 = self.grid_eta.get(k,i-1,j)
+            bi_1 = self.grid_w.get(k,i-1,j)
+            ci_1 = self.grid_v.get(k,i-1,j)
+            di_1 = self.d.get(0,i-1,j)
+        else:
+            ai_1 = 0
+            bi_1 = self.grid_w.get(k,i,j)
+            ci_1 = self.grid_v.get(k,i,j)
+            di_1 = 5000
         
-        aj_1 = self.grid_eta.get(k,i,j)
-        bj_1 = self.grid_w.get(k,i,j)
-        cj_1 = self.grid_v.get(k,i,j)
-        dj_1 = self.d.get(0,i,j)
+        #if (self.d.m-1 < j+1):
+        if (0 < j):
+            aj_1 = self.grid_eta.get(k,i,j-1)
+            bj_1 = self.grid_w.get(k,i,j-1)
+            cj_1 = self.grid_v.get(k,i,j-1)
+            dj_1 = self.d.get(0,i,j-1)
+        else:
+            aj_1 = 0
+            bj_1 = self.grid_w.get(k,i,j)
+            cj_1 = self.grid_v.get(k,i,j)
+            dj_1 = 5000
        
-        if (self.d.n-1 > i):
+        if (self.d.n-1 < i+1):
             ai_2 = self.grid_eta.get(k,i+1,j)
             bi_2 = self.grid_w.get(k,i+1,j)
             ci_2 = self.grid_v.get(k,i+1,j)
@@ -512,7 +572,7 @@ class Modelling:
             ci_2 = self.grid_v.get(k,i,j)
             di_2 = 5000
         
-        if (self.d.m-1 > j):
+        if (self.d.m-1 < j+1):
             aj_2 = self.grid_eta.get(k,i,j+1)
             bj_2 = self.grid_w.get(k,i,j+1)
             cj_2 = self.grid_v.get(k,i,j+1)
@@ -535,7 +595,7 @@ class Modelling:
         v = np.array([self.grid_eta.get(k-1,i,j), self.grid_w.get(k-1,i,j), self.grid_v.get(k-1,i,j)])
 
         return np.subtract(v, (self.dt / self.h) * (np.add(np.add(m1 @ v1, m2 @ v2), m3 @ v3)))
-    #'''
+    '''
 
     def save_to_json(self, m, k=0, ind = (0, 0)):
         data = list(m)
@@ -625,7 +685,7 @@ def min_stability(h, c):
 
 # creates the Palma islands topography
 def palmaTopography(size_x, size_y, s):
-    init_topo = np.array([np.full((size_x,size_y),5000.0)])
+    init_topo = np.array([np.full((size_x,size_y),5000)])
     topography = Grid(grid = init_topo, n = size_x, m = size_y, max_time = 1, dec = 1)
 
     # decreasing polygons for the narrow channel
@@ -659,28 +719,19 @@ def palmaTopography(size_x, size_y, s):
     topography.set_circ_unif(0,160*s,600*s,36*s,5000,0,c_min=4*s)
     topography.set_circ_unif(0,0,580*s,50*s,5000,200,c_min=8*s)
 
-    #poly = Polygon([[100*s,0],[100*s,30*s],[120*s,30*s],[120*s,0]])
-    poly = Polygon([[120*s,25*s],[90*s,70*s],[105*s,80*s],[135*s,35*s]])
-    #poly = Polygon([[40*s,110*s],[100*s,30*s],[140*s,60*s],[80*s,140*s]])
-    #poly = Polygon([[120*s,25*s],[100*s,55*s],[115*s,65*s],[135*s,35*s]])
-    #poly = Polygon([[45*s,103*s],[35*s,117*s],[70*s,142*s],[80*s,128*s]])
-
-    for i in range(size_x):
-        for j in range(size_y):
-            if poly.contains(i,j):
-                topography.set_v(0,i,j,7000)
-
+    poly = Polygon([[45*s,103*s],[35*s,117*s],[70*s,142*s],[80*s,128*s]])
+    
     return poly, topography
 
 def otherTopography(size_x, size_y, s):
-    init_topo = np.array([np.full((size_x, size_y), 5000.0)])
+    init_topo = np.array([np.full((size_x, size_y), 5000)])
     topography = Grid(grid = init_topo, n = size_x, m = size_y, max_time = 1, dec = 1)
     
     return topography
 
 def get_amplitude(size_x, size_y, s, t, h, r, c, w):
-    init_grid = np.array([np.full((size_x,size_y),0.0)])
-    grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = t, dec = 10)
+    init_grid = np.array([np.full((size_x,size_y),0)])
+    grid = Grid(grid = init_grid, n = size_x, m = size_y, max_time = t, dec = 4)
 
     grid.set_wave(grid_num=0,c_i=160*s,c_j=600*s,R=r*s,h=h*1.2,c=c*s,w=w)
     #grid.set_rect(grid_num=0,c=[[160*s-1,0],[160*s-1,600*s],[160*s,600*s],[160*s,0]],value=0)
@@ -699,9 +750,9 @@ def get_amplitude(size_x, size_y, s, t, h, r, c, w):
 
 '''
 def get_velocity(size_x, size_y, s, topo, amp, v, t):
-    init_grid = np.array([np.full((size_x,size_y),0.0)])
-    grid_v = Grid(grid = init_grid, n = size_x, m = size_y, max_time = t, dec = 10)
-    grid_w = Grid(grid = init_grid, n = size_x, m = size_y, max_time = t, dec = 10)
+    init_grid = np.array([np.full((size_x,size_y),0)])
+    grid_v = Grid(grid = init_grid, n = size_x, m = size_y, max_time = t, dec = 1)
+    grid_w = Grid(grid = init_grid, n = size_x, m = size_y, max_time = t, dec = 1)
 
     for i in range(topo.n):
         for j in range(topo.m):
@@ -731,13 +782,13 @@ def get_velocity(size_x, size_y, s, topo, amp, v, t):
                 grid_w.set_v(0,i,j,amp.get(0,i,j)*y*math.sqrt(9.81/topo.get(0,i,j)))
     
     return grid_v, grid_w
-#'''
+'''
 
 '''
 def get_dir(v):
     v = v/np.linalg.norm(v)
     return v[0], v[1]
-#'''
+'''
 
 # create grid
 # parameters
@@ -794,14 +845,14 @@ alpha = float(input("Enter the value or alpha: "))
 print()
 print("alpha is now given by: ", alpha)
 print("alpha is of type: ", type(alpha))
-#'''
+'''
 
 size_x = int(160*s)
 size_y = int(600*s)
 t0 = time.time()
 
 poly, topography = palmaTopography(size_x, size_y, s)
-topography.plot_grid(0,"topography",center=5000,vmax=7000)
+topography.plot_grid(0,"topography",center=3000,vmax=3000)
 t1 = time.time()
 print("Made topography in: ", (t1 - t0))
 
@@ -818,10 +869,10 @@ grid_v.plot_grid(0, "initial x speed "+name,vmin=-h*0.1,vmax=h*0.1,center=0)
 grid_w.plot_grid(0, "initial y speed "+name,vmin=-h*0.1,vmax=h*0.1,center=0)
 t3 = time.time()
 print("Time to construct velocity: ", (t3 - t2))
-#'''
+'''
 
 # create instance of modelling class
-instance = Modelling(grid_eta=grid_eta, d=topography, poly = poly)#, grid_w=grid_w, grid_v=grid_v, alpha = alpha) # need to give the grid here like (grid)
+instance = Modelling(grid_eta=grid_eta, d=topography, poly = poly)#grid_w=grid_w, grid_v=grid_v, alpha = alpha) # need to give the grid here like (grid)
 
 # set the parameters
 instance.set_param(h = 10/(s*2), dt = delta)#54) # can add c = ?, h = ?, dt = ?
@@ -835,30 +886,7 @@ t5 = time.time()
 print("Time for solveEq(): ", (t5 - t4))
 
 #instance.plot_result("test_set", vmax=200, vmin=-200, step = 1, time = 200)
-#'''
-def animate(i):
-    plt.clf()
-    ax = sns.heatmap(grid[i], vmin = -h*0.5, vmax = h*0.5, center = 0,
-                         square = True, xticklabels = False, yticklabels = False,
-                         cbar = True)
-
-def save_animation(grid, fig, name):
-    anim = animation.FuncAnimation(fig, animate, interval = max(int(600*delta),1), frames = t)
-
-    Writer = writers['ffmpeg']
-    writer = Writer(fps=min(int(1.6/delta),500), metadata={'artist': 'Me'}, bitrate=1000)
-
-    anim.save('Tsunami simulation '+name+'.mp4', writer)
-#'''
-
-grid = instance.grid_eta.grid
-#'''
-fig = plt.figure()
-save_animation(grid, fig, ""+name)
-#'''
-t6 = time.time()
-print("Time to make amplitude video: ", (t6 - t5))
-
+grid = instance.grid.grid
 data = list(grid)
 for i in range(len(data)):
     data[i] = list(grid[i])
@@ -870,12 +898,8 @@ for i in range(len(data)):
 with open(name+"_grid.json", "w") as write_file:
     json.dump(data, write_file)
 
-t7 = time.time()
-print("Time to make JSON grid: ", (t7 - t6))
-
-t8 = time.time()
-instance.grid_eta.plot_grid(t-1,name+"_final",center=0, vmax = h*0.25, vmin = -h*0.25)
-print("Time to make final grid: ", (t8 - t7))
+t6 = time.time()
+print("Time to dump data to JSON: ", (t6 - t5))
 
 '''
 grid = instance.grid_w.grid
@@ -889,12 +913,12 @@ fig = plt.figure()
 save_animation(grid, fig, "v "+name)
 t8 = time.time()
 print("Time to make y velocity video: ", (t8 - t7))
-#'''
+'''
 
 #instance.grid_v.plot_grid(100, "test_v")
 #instance.grid_w.plot_grid(100, "test_w")
 
-print("Total time is: ", (t8 - t0))
+print("Total time is: ", (t6 - t0))
 
 #print(instance.grid.what_is_max())
 
